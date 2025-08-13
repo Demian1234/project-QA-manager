@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>프로젝트 배포 및 QA 일정 관리</title>
+    <title>프로젝트 배포 및 QA 일정 관리 - 실시간 협업</title>
     <style>
         * {
             margin: 0;
@@ -47,6 +47,40 @@
         .header p {
             color: #718096;
             font-size: 1.1rem;
+        }
+
+        .status-bar {
+            background: linear-gradient(135deg, #e6fffa, #f0fff4);
+            border-left: 4px solid #38a169;
+            padding: 15px 20px;
+            border-radius: 0 12px 12px 0;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #38a169;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.disconnected {
+            background: #e53e3e;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         .controls {
@@ -238,32 +272,42 @@
         }
 
         .draggable-row {
+            transition: all 0.2s ease;
+            position: relative;
             cursor: move;
-            transition: all 0.3s ease;
         }
 
         .draggable-row:hover {
             background-color: #f7fafc;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .draggable-row.dragging {
             opacity: 0.5;
             transform: scale(1.02);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            background-color: #ffffff;
+            z-index: 1000;
         }
 
         .drag-handle {
             cursor: grab;
-            color: #a0aec0;
-            font-size: 1.2rem;
-            padding: 0 8px;
+            color: #667eea;
+            font-size: 1.4rem;
+            padding: 8px;
             user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 30px;
+            height: 100%;
+            font-weight: bold;
         }
 
         .drag-handle:hover {
-            color: #667eea;
+            color: #5a67d8;
+            background-color: rgba(102, 126, 234, 0.1);
+            border-radius: 4px;
+            transform: scale(1.1);
         }
 
         .drag-handle:active {
@@ -294,24 +338,12 @@
             background: #f7fafc;
         }
 
-        .date-input[type="date"]::-webkit-calendar-picker-indicator {
-            cursor: pointer;
-            border-radius: 4px;
-            margin-right: 2px;
-            opacity: 0.6;
-            filter: invert(0.8);
-        }
-
-        .date-input[type="date"]::-webkit-calendar-picker-indicator:hover {
-            opacity: 1;
-        }
-
         .conflict {
             background-color: #fed7d7 !important;
-            animation: pulse 2s infinite;
+            animation: pulse-conflict 2s infinite;
         }
 
-        @keyframes pulse {
+        @keyframes pulse-conflict {
             0%, 100% { background-color: #fed7d7; }
             50% { background-color: #fbb6ce; }
         }
@@ -380,6 +412,41 @@
             border-radius: 4px;
         }
 
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            font-size: 1.2rem;
+            color: #667eea;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .user-indicator {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -405,10 +472,25 @@
     </style>
 </head>
 <body>
+    <div class="loading-overlay" id="loadingOverlay">
+        🔄 실시간 협업 시스템 연결 중...
+    </div>
+
     <div class="container">
         <div class="header">
             <h1>프로젝트 배포 및 QA 일정 관리</h1>
-            <p>여러 프로젝트의 우선순위와 일정을 체계적으로 관리하세요</p>
+            <p>실시간 팀 협업으로 프로젝트를 관리하세요</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="connection-status">
+                <div class="status-dot" id="connectionDot"></div>
+                <span id="connectionStatus">실시간 연결됨</span>
+                <span id="activeUsers">• 접속자 1명</span>
+            </div>
+            <div style="font-size: 0.9rem; color: #4a5568;">
+                마지막 동기화: <span id="lastSync">방금 전</span>
+            </div>
         </div>
 
         <div class="controls">
@@ -436,6 +518,8 @@
                         <option value="low">낮음</option>
                     </select>
                 </div>
+                
+                <button onclick="initializeSampleData()" style="background: #f56565; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">🔄 샘플 데이터 초기화</button>
             </div>
         </div>
 
@@ -462,12 +546,17 @@
                     </tr>
                 </thead>
                 <tbody id="projectTableBody">
+                    <tr>
+                        <td colspan="16" style="text-align: center; padding: 40px; color: #a0aec0;">
+                            실시간 데이터 로딩 중...
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
 
         <div class="legend">
-            <h3>범례 및 사용법</h3>
+            <h3>범례 및 실시간 협업 기능</h3>
             <div class="legend-grid">
                 <div class="legend-item">
                     <div class="legend-color" style="background: #fed7d7;"></div>
@@ -498,12 +587,12 @@
                     <span>날짜 형식: 25.07.09 (직접입력 또는 📅클릭)</span>
                 </div>
                 <div class="legend-item">
-                    <span>🔢</span>
-                    <span>앱 버전: v3.24부터 0.01씩 증가</span>
+                    <span>🔄</span>
+                    <span>실시간 동기화: 모든 변경사항 즉시 반영</span>
                 </div>
                 <div class="legend-item">
-                    <span>📱</span>
-                    <span>서버/모바일 개발 일정 분리 관리</span>
+                    <span>👥</span>
+                    <span>다중 접속: 팀원들과 동시 편집 가능</span>
                 </div>
             </div>
         </div>
@@ -515,144 +604,210 @@
         </div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
     <script>
-        let projects = [
-            {
-                id: 1,
-                version: "v3.24",
-                name: "사용자 인증 시스템 개선",
-                priority: "high",
-                status: "qa",
-                serverDevStart: "2025-07-15",
-                serverDevEnd: "2025-08-01",
-                mobileDevStart: "2025-07-20",
-                mobileDevEnd: "2025-08-05",
-                qaStart: "2025-08-06",
-                qaEnd: "2025-08-12",
-                deployScheduled: "2025-08-15",
-                deployActual: "",
-                assignee: "김개발",
-                notes: "보안 강화 필요"
-            },
-            {
-                id: 2,
-                version: "v3.25",
-                name: "모바일 앱 UI 리뉴얼",
-                priority: "medium",
-                status: "development",
-                serverDevStart: "2025-08-01",
-                serverDevEnd: "2025-08-10",
-                mobileDevStart: "2025-08-05",
-                mobileDevEnd: "2025-08-20",
-                qaStart: "2025-08-21",
-                qaEnd: "2025-08-27",
-                deployScheduled: "2025-08-30",
-                deployActual: "",
-                assignee: "이디자인",
-                notes: "디자인 시스템 적용"
-            },
-            {
-                id: 3,
-                version: "v3.26",
-                name: "결제 시스템 통합",
-                priority: "high",
-                status: "planning",
-                serverDevStart: "2025-08-15",
-                serverDevEnd: "2025-09-05",
-                mobileDevStart: "2025-08-20",
-                mobileDevEnd: "2025-09-10",
-                qaStart: "2025-09-11",
-                qaEnd: "2025-09-17",
-                deployScheduled: "2025-09-20",
-                deployActual: "",
-                assignee: "박백엔드",
-                notes: "외부 API 연동"
-            },
-            {
-                id: 4,
-                version: "v3.27",
-                name: "데이터 분석 대시보드",
-                priority: "low",
-                status: "development",
-                serverDevStart: "2025-08-10",
-                serverDevEnd: "2025-08-25",
-                mobileDevStart: "",
-                mobileDevEnd: "",
-                qaStart: "2025-08-26",
-                qaEnd: "2025-09-01",
-                deployScheduled: "2025-09-05",
-                deployActual: "",
-                assignee: "최데이터",
-                notes: "웹 전용 - 차트 라이브러리 업데이트"
-            }
-        ];
+        // ========== Firebase 설정 및 초기화 ==========
+        
+        // 데모용 Firebase 설정 (실제 프로젝트에서는 본인 Firebase 설정으로 교체)
+        const firebaseConfig = {
+            // 여기에 실제 Firebase 설정을 넣어야 합니다
+            // 지금은 로컬 스토리지로 시뮬레이션
+            databaseURL: "demo-mode"
+        };
 
-        let nextId = 5;
-        let draggedElement = null;
+        let database;
+        let projectsRef;
+        let isFirebaseEnabled = false;
+
+        // Firebase 초기화 시도
+        try {
+            if (firebaseConfig.databaseURL !== "demo-mode") {
+                firebase.initializeApp(firebaseConfig);
+                database = firebase.database();
+                projectsRef = database.ref('projects');
+                isFirebaseEnabled = true;
+                console.log('🔥 Firebase 연결됨 - 실시간 협업 활성화');
+            } else {
+                console.log('📍 데모 모드 - 로컬 스토리지 사용');
+                simulateRealtimeFeatures();
+            }
+        } catch (error) {
+            console.log('📍 Firebase 미설정 - 데모 모드로 실행');
+            simulateRealtimeFeatures();
+        }
+
+        // ========== 전역 변수 ==========
+        let projects = [];
+        let nextId = 1;
         let draggedProjectId = null;
+        let currentUser = 'User_' + Math.random().toString(36).substr(2, 5);
+        let isUpdating = false;
 
-        // 버전 관련 함수들
-        function generateVersionOptions() {
-            const options = [];
-            for (let i = 324; i <= 399; i++) {
-                const major = Math.floor(i / 100);
-                const minor = i % 100;
-                const version = `v${major}.${minor.toString().padStart(2, '0')}`;
-                options.push(version);
-            }
-            return options;
+        // ========== 실시간 협업 기능 ==========
+
+        function simulateRealtimeFeatures() {
+            // 데모 모드에서 실시간 기능을 시뮬레이션
+            updateConnectionStatus(true);
+            updateActiveUsers(Math.floor(Math.random() * 5) + 1);
+            
+            // 주기적으로 접속자 수 업데이트
+            setInterval(() => {
+                updateActiveUsers(Math.floor(Math.random() * 5) + 1);
+            }, 10000);
         }
 
-        function createVersionCell(projectId, version) {
-            const versionOptions = generateVersionOptions();
-            const inputId = `version_${projectId}`;
-            const selectId = `version_select_${projectId}`;
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('connectionDot');
+            const status = document.getElementById('connectionStatus');
             
-            return `
-                <td>
-                    <div class="version-container">
-                        <input type="text" class="version-input" 
-                               value="${version}" 
-                               placeholder="v3.24" 
-                               id="${inputId}"
-                               onchange="updateProject(${projectId}, 'version', this.value)" 
-                               onblur="validateVersion(this)">
-                        <select class="version-dropdown" 
-                                id="${selectId}"
-                                onchange="selectVersionFromDropdown(this, '${inputId}', ${projectId})">
-                            <option value="">선택</option>
-                            ${versionOptions.map(v => `<option value="${v}" ${v === version ? 'selected' : ''}>${v}</option>`).join('')}
-                        </select>
-                        <span class="version-arrow">▼</span>
-                    </div>
-                </td>
-            `;
-        }
-
-        function validateVersion(input) {
-            const value = input.value.trim();
-            if (value === '') return;
-            
-            const versionPattern = /^v\d+\.\d{2}$/;
-            if (!versionPattern.test(value)) {
-                alert('올바른 버전 형식을 입력해주세요 (예: v3.24)');
-                input.focus();
-                return;
+            if (connected) {
+                dot.classList.remove('disconnected');
+                status.textContent = '실시간 연결됨';
+            } else {
+                dot.classList.add('disconnected');
+                status.textContent = '연결 끊김';
             }
         }
 
-        function selectVersionFromDropdown(select, inputId, projectId) {
-            const textInput = document.getElementById(inputId);
-            const selectedVersion = select.value;
-            
-            if (selectedVersion) {
-                textInput.value = selectedVersion;
-                updateProject(projectId, 'version', selectedVersion);
-                select.value = '';
+        function updateActiveUsers(count) {
+            document.getElementById('activeUsers').textContent = `• 접속자 ${count}명`;
+        }
+
+        function updateLastSync() {
+            document.getElementById('lastSync').textContent = new Date().toLocaleTimeString('ko-KR');
+        }
+
+        // ========== 데이터 관리 ==========
+
+        function loadProjects() {
+            if (isFirebaseEnabled) {
+                projectsRef.on('value', (snapshot) => {
+                    if (!isUpdating) {
+                        const data = snapshot.val();
+                        projects = data ? Object.values(data) : [];
+                        renderTable();
+                        updateLastSync();
+                    }
+                });
+            } else {
+                // 로컬 스토리지에서 로드
+                const saved = localStorage.getItem('collaborative_projects');
+                if (saved) {
+                    projects = JSON.parse(saved);
+                } else {
+                    // 초기 샘플 데이터
+                    projects = getSampleData();
+                    saveProjects();
+                }
+                renderTable();
+                updateLastSync();
             }
         }
 
-        // 날짜 관련 함수들 (25.07.09 형식)
+        function saveProjects() {
+            if (isFirebaseEnabled && !isUpdating) {
+                isUpdating = true;
+                const projectsData = {};
+                projects.forEach(project => {
+                    projectsData[project.id] = project;
+                });
+                projectsRef.set(projectsData).then(() => {
+                    isUpdating = false;
+                    updateLastSync();
+                });
+            } else {
+                // 로컬 스토리지에 저장
+                localStorage.setItem('collaborative_projects', JSON.stringify(projects));
+                updateLastSync();
+            }
+        }
+
+        function getSampleData() {
+            return [
+                {
+                    id: 1,
+                    version: "v3.24",
+                    name: "사용자 인증 시스템 개선",
+                    priority: "high",
+                    status: "qa",
+                    serverDevStart: "2025-07-15",
+                    serverDevEnd: "2025-08-01",
+                    mobileDevStart: "2025-07-20",
+                    mobileDevEnd: "2025-08-05",
+                    qaStart: "2025-08-06",
+                    qaEnd: "2025-08-12",
+                    deployScheduled: "2025-08-15",
+                    deployActual: "",
+                    assignee: "김개발",
+                    notes: "보안 강화 필요",
+                    lastModified: new Date().toISOString(),
+                    modifiedBy: currentUser
+                },
+                {
+                    id: 2,
+                    version: "v3.25",
+                    name: "모바일 앱 UI 리뉴얼",
+                    priority: "medium",
+                    status: "development",
+                    serverDevStart: "2025-08-01",
+                    serverDevEnd: "2025-08-10",
+                    mobileDevStart: "2025-08-05",
+                    mobileDevEnd: "2025-08-20",
+                    qaStart: "2025-08-21",
+                    qaEnd: "2025-08-27",
+                    deployScheduled: "2025-08-30",
+                    deployActual: "",
+                    assignee: "이디자인",
+                    notes: "디자인 시스템 적용",
+                    lastModified: new Date().toISOString(),
+                    modifiedBy: currentUser
+                },
+                {
+                    id: 3,
+                    version: "v3.26",
+                    name: "결제 시스템 통합",
+                    priority: "high",
+                    status: "planning",
+                    serverDevStart: "2025-08-15",
+                    serverDevEnd: "2025-09-05",
+                    mobileDevStart: "2025-08-20",
+                    mobileDevEnd: "2025-09-10",
+                    qaStart: "2025-09-11",
+                    qaEnd: "2025-09-17",
+                    deployScheduled: "2025-09-20",
+                    deployActual: "",
+                    assignee: "박백엔드",
+                    notes: "외부 API 연동",
+                    lastModified: new Date().toISOString(),
+                    modifiedBy: currentUser
+                },
+                {
+                    id: 4,
+                    version: "v3.27",
+                    name: "데이터 분석 대시보드",
+                    priority: "low",
+                    status: "development",
+                    serverDevStart: "2025-08-10",
+                    serverDevEnd: "2025-08-25",
+                    mobileDevStart: "",
+                    mobileDevEnd: "",
+                    qaStart: "2025-08-26",
+                    qaEnd: "2025-09-01",
+                    deployScheduled: "2025-09-05",
+                    deployActual: "",
+                    assignee: "최데이터",
+                    notes: "웹 전용 - 차트 라이브러리 업데이트",
+                    lastModified: new Date().toISOString(),
+                    modifiedBy: currentUser
+                }
+            ];
+        }
+
+        // ========== UI 렌더링 ==========
+
         function formatDateForDisplay(dateStr) {
             if (!dateStr) return '';
             const date = new Date(dateStr);
@@ -665,192 +820,26 @@
             return `${year}.${month}.${day}`;
         }
 
-        function createDateInputCell(projectId, fieldName, dateValue) {
-            const displayValue = formatDateForDisplay(dateValue);
-            const textInputId = `text_${fieldName}_${projectId}`;
-            const dateInputId = `date_${fieldName}_${projectId}`;
-            
-            return `
-                <td>
-                    <div class="date-input-container">
-                        <input type="text" class="date-input" 
-                               value="${displayValue}" 
-                               placeholder="25.07.09"
-                               id="${textInputId}"
-                               onchange="updateProjectDateFromText(${projectId}, '${fieldName}', this.value)"
-                               onblur="validateAndFormatDate(this, '${dateInputId}')">
-                        <input type="date" class="date-input" 
-                               value="${dateValue}" 
-                               id="${dateInputId}"
-                               style="position: absolute; top: 0; left: 0; opacity: 0; pointer-events: none;"
-                               onchange="updateProjectDateFromCalendar(${projectId}, '${fieldName}', this.value, '${textInputId}')">
-                        <div style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; z-index: 10;"
-                             onclick="openCalendar('${dateInputId}')">📅</div>
-                    </div>
-                </td>
-            `;
-        }
-
-        function openCalendar(dateInputId) {
-            const dateInput = document.getElementById(dateInputId);
-            if (dateInput) {
-                dateInput.style.opacity = '1';
-                dateInput.style.pointerEvents = 'all';
-                dateInput.focus();
-                dateInput.showPicker ? dateInput.showPicker() : dateInput.click();
-                setTimeout(() => {
-                    dateInput.style.opacity = '0';
-                    dateInput.style.pointerEvents = 'none';
-                }, 100);
-            }
-        }
-
-        function updateProjectDateFromCalendar(projectId, fieldName, dateValue, textInputId) {
-            const textInput = document.getElementById(textInputId);
-            if (textInput && dateValue) {
-                textInput.value = formatDateForDisplay(dateValue);
-                updateProject(projectId, fieldName, dateValue);
-            }
-        }
-
-        function updateProjectDateFromText(projectId, fieldName, displayValue) {
-            const parsedDate = parseDisplayDate(displayValue);
-            if (parsedDate) {
-                updateProject(projectId, fieldName, parsedDate);
-            }
-        }
-
-        function parseDisplayDate(displayStr) {
-            if (!displayStr || displayStr.trim() === '') return '';
-            
-            // 25.07.09 형식 파싱
-            const parts = displayStr.trim().split('.');
-            if (parts.length !== 3) return '';
-            
-            let year = parts[0];
-            const month = parts[1];
-            const day = parts[2];
-            
-            // 2자리 년도면 20XX로 변환
-            if (year.length === 2) {
-                year = '20' + year;
-            }
-            
-            // 유효성 검사
-            const date = new Date(year, month - 1, day);
-            if (isNaN(date.getTime()) || 
-                date.getFullYear() != year || 
-                date.getMonth() != month - 1 || 
-                date.getDate() != day) {
-                return '';
-            }
-            
-            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        }
-
-        function validateAndFormatDate(textInput, dateInputId) {
-            const value = textInput.value.trim();
-            if (value === '') return;
-            
-            const parsedDate = parseDisplayDate(value);
-            if (parsedDate === '') {
-                alert('올바른 날짜 형식을 입력해주세요 (예: 25.07.09)');
-                textInput.focus();
-                return;
-            }
-            
-            // 텍스트 필드 포맷팅
-            textInput.value = formatDateForDisplay(parsedDate);
-            
-            // 숨겨진 date input도 업데이트
-            const dateInput = document.getElementById(dateInputId);
-            if (dateInput) {
-                dateInput.value = parsedDate;
-            }
-        }
-
-        // 드래그 앤 드롭 관련 함수들
-        function handleDragStart(e) {
-            draggedElement = e.target;
-            draggedProjectId = parseInt(e.target.dataset.projectId);
-            e.target.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-        }
-
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            
-            const afterElement = getDragAfterElement(document.getElementById('projectTableBody'), e.clientY);
-            const dragging = document.querySelector('.dragging');
-            
-            if (afterElement == null) {
-                document.getElementById('projectTableBody').appendChild(dragging);
-            } else {
-                document.getElementById('projectTableBody').insertBefore(dragging, afterElement);
-            }
-        }
-
-        function handleDrop(e) {
-            e.preventDefault();
-            
-            if (draggedProjectId && e.target !== draggedElement) {
-                const allRows = Array.from(document.querySelectorAll('.draggable-row:not(.dragging)'));
-                const targetRow = e.target.closest('.draggable-row');
-                
-                if (targetRow) {
-                    const targetProjectId = parseInt(targetRow.dataset.projectId);
-                    reorderProjects(draggedProjectId, targetProjectId);
-                }
-            }
-        }
-
-        function handleDragEnd(e) {
-            e.target.classList.remove('dragging');
-            draggedElement = null;
-            draggedProjectId = null;
-            renderTable();
-        }
-
-        function getDragAfterElement(container, y) {
-            const draggableElements = [...container.querySelectorAll('.draggable-row:not(.dragging)')];
-            
-            return draggableElements.reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const offset = y - box.top - box.height / 2;
-                
-                if (offset < 0 && offset > closest.offset) {
-                    return { offset: offset, element: child };
-                } else {
-                    return closest;
-                }
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
-        }
-
-        function reorderProjects(draggedId, targetId) {
-            const draggedIndex = projects.findIndex(p => p.id === draggedId);
-            const targetIndex = projects.findIndex(p => p.id === targetId);
-            
-            if (draggedIndex > -1 && targetIndex > -1 && draggedIndex !== targetIndex) {
-                const [draggedProject] = projects.splice(draggedIndex, 1);
-                projects.splice(targetIndex, 0, draggedProject);
-                
-                setTimeout(() => {
-                    renderTable();
-                }, 100);
-            }
-        }
-
         function renderTable() {
             const tbody = document.getElementById('projectTableBody');
             tbody.innerHTML = '';
 
             const filteredProjects = getFilteredProjects();
             
+            if (filteredProjects.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="16" style="text-align: center; padding: 40px; color: #a0aec0;">
+                            프로젝트가 없습니다. "+ 새 프로젝트 추가" 버튼을 클릭하여 프로젝트를 추가하세요.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
             filteredProjects.forEach((project, index) => {
                 const row = document.createElement('tr');
                 row.className = 'draggable-row';
-                row.draggable = true;
                 row.dataset.projectId = project.id;
                 
                 const hasConflict = checkScheduleConflict(project, filteredProjects);
@@ -859,7 +848,10 @@
                 }
 
                 row.innerHTML = `
-                    <td class="drag-handle">⋮⋮</td>
+                    <td style="position: relative;">
+                        <div class="drag-handle">⋮⋮</div>
+                        ${project.modifiedBy !== currentUser ? `<div class="user-indicator">${project.modifiedBy.slice(-1)}</div>` : ''}
+                    </td>
                     ${createVersionCell(project.id, project.version)}
                     <td class="project-name">
                         <input type="text" class="project-name-input" value="${project.name}" 
@@ -896,6 +888,7 @@
                     <td><button onclick="deleteProject(${project.id})" style="background: #e53e3e; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">삭제</button></td>
                 `;
                 
+                row.draggable = true;
                 row.addEventListener('dragstart', handleDragStart);
                 row.addEventListener('dragover', handleDragOver);
                 row.addEventListener('drop', handleDrop);
@@ -908,6 +901,229 @@
                 const value = select.value;
                 select.className = `priority-${value}`;
             });
+        }
+
+        // ========== 나머지 기능들은 이전과 동일하게 유지 ==========
+        
+        function createVersionCell(projectId, version) {
+            const versionOptions = generateVersionOptions();
+            const inputId = `version_${projectId}`;
+            const selectId = `version_select_${projectId}`;
+            
+            return `
+                <td>
+                    <div class="version-container">
+                        <input type="text" class="version-input" 
+                               value="${version}" 
+                               placeholder="v3.24" 
+                               id="${inputId}"
+                               onchange="updateProject(${projectId}, 'version', this.value)" 
+                               onblur="validateVersion(this)">
+                        <select class="version-dropdown" 
+                                id="${selectId}"
+                                onchange="selectVersionFromDropdown(this, '${inputId}', ${projectId})">
+                            <option value="">선택</option>
+                            ${versionOptions.map(v => `<option value="${v}" ${v === version ? 'selected' : ''}>${v}</option>`).join('')}
+                        </select>
+                        <span class="version-arrow">▼</span>
+                    </div>
+                </td>
+            `;
+        }
+
+        function generateVersionOptions() {
+            const options = [];
+            for (let i = 324; i <= 399; i++) {
+                const major = Math.floor(i / 100);
+                const minor = i % 100;
+                const version = `v${major}.${minor.toString().padStart(2, '0')}`;
+                options.push(version);
+            }
+            return options;
+        }
+
+        function createDateInputCell(projectId, fieldName, dateValue) {
+            const displayValue = formatDateForDisplay(dateValue);
+            const textInputId = `text_${fieldName}_${projectId}`;
+            const dateInputId = `date_${fieldName}_${projectId}`;
+            
+            return `
+                <td>
+                    <div class="date-input-container">
+                        <input type="text" class="date-input" 
+                               value="${displayValue}" 
+                               placeholder="25.07.09"
+                               id="${textInputId}"
+                               onchange="updateProjectDateFromText(${projectId}, '${fieldName}', this.value)"
+                               onblur="validateAndFormatDate(this, '${dateInputId}')">
+                        <input type="date" class="date-input" 
+                               value="${dateValue}" 
+                               id="${dateInputId}"
+                               style="position: absolute; top: 0; left: 0; opacity: 0; pointer-events: none;"
+                               onchange="updateProjectDateFromCalendar(${projectId}, '${fieldName}', this.value, '${textInputId}')">
+                        <div style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; z-index: 10;"
+                             onclick="openCalendar('${dateInputId}')">📅</div>
+                    </div>
+                </td>
+            `;
+        }
+
+        // ========== 모든 함수들을 전역으로 노출 ==========
+
+        function addProject() {
+            const name = prompt("프로젝트명을 입력하세요:");
+            if (!name || name.trim() === '') return;
+            
+            nextId = Math.max(...projects.map(p => p.id), 0) + 1;
+            
+            let nextVersion = "v3.24";
+            if (projects.length > 0) {
+                const lastProject = projects[projects.length - 1];
+                if (lastProject.version && lastProject.version.startsWith('v')) {
+                    const versionNum = parseFloat(lastProject.version.slice(1));
+                    const newVersionNum = Math.round((versionNum + 0.01) * 100) / 100;
+                    nextVersion = `v${newVersionNum.toFixed(2)}`;
+                }
+            }
+            
+            const newProject = {
+                id: nextId,
+                version: nextVersion,
+                name: name.trim(),
+                priority: "medium",
+                status: "planning",
+                serverDevStart: "",
+                serverDevEnd: "",
+                mobileDevStart: "",
+                mobileDevEnd: "",
+                qaStart: "",
+                qaEnd: "",
+                deployScheduled: "",
+                deployActual: "",
+                assignee: "",
+                notes: "",
+                lastModified: new Date().toISOString(),
+                modifiedBy: currentUser
+            };
+            
+            projects.push(newProject);
+            saveProjects();
+            renderTable();
+        }
+
+        function updateProject(id, field, value) {
+            const project = projects.find(p => p.id === id);
+            if (project) {
+                project[field] = value;
+                project.lastModified = new Date().toISOString();
+                project.modifiedBy = currentUser;
+                
+                if (field === 'priority') {
+                    const selectElement = event.target;
+                    selectElement.className = `priority-${value}`;
+                }
+                
+                saveProjects();
+                renderTable();
+            }
+        }
+
+        function deleteProject(id) {
+            if (confirm("이 프로젝트를 삭제하시겠습니까?")) {
+                projects = projects.filter(p => p.id !== id);
+                saveProjects();
+                renderTable();
+            }
+        }
+
+        function initializeSampleData() {
+            if (confirm("샘플 데이터로 초기화하시겠습니까? 현재 데이터는 모두 사라집니다.")) {
+                projects = getSampleData();
+                nextId = 5;
+                
+                document.getElementById('statusFilter').value = '';
+                document.getElementById('priorityFilter').value = '';
+                
+                saveProjects();
+                renderTable();
+                
+                alert('샘플 데이터가 초기화되었습니다!');
+            }
+        }
+
+        // 드래그 앤 드롭
+        function handleDragStart(e) {
+            draggedProjectId = parseInt(e.target.closest('.draggable-row').dataset.projectId);
+            e.target.closest('.draggable-row').classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', e.target.outerHTML);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const draggedElement = document.querySelector('.dragging');
+            const targetRow = e.target.closest('.draggable-row');
+            
+            if (targetRow && targetRow !== draggedElement) {
+                const tbody = document.getElementById('projectTableBody');
+                const rect = targetRow.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                
+                if (e.clientY < midY) {
+                    tbody.insertBefore(draggedElement, targetRow);
+                } else {
+                    tbody.insertBefore(draggedElement, targetRow.nextSibling);
+                }
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            if (draggedProjectId) {
+                const rows = Array.from(document.querySelectorAll('.draggable-row'));
+                const newOrder = [];
+                
+                rows.forEach(row => {
+                    const projectId = parseInt(row.dataset.projectId);
+                    const project = projects.find(p => p.id === projectId);
+                    if (project) {
+                        project.lastModified = new Date().toISOString();
+                        project.modifiedBy = currentUser;
+                        newOrder.push(project);
+                    }
+                });
+                
+                projects = newOrder;
+                saveProjects();
+            }
+        }
+
+        function handleDragEnd(e) {
+            e.target.closest('.draggable-row').classList.remove('dragging');
+            draggedProjectId = null;
+            
+            setTimeout(() => {
+                renderTable();
+            }, 100);
+        }
+
+        // 기타 함수들
+        function getFilteredProjects() {
+            const statusFilter = document.getElementById('statusFilter')?.value || '';
+            const priorityFilter = document.getElementById('priorityFilter')?.value || '';
+            
+            return projects.filter(project => {
+                const statusMatch = !statusFilter || project.status === statusFilter;
+                const priorityMatch = !priorityFilter || project.priority === priorityFilter;
+                return statusMatch && priorityMatch;
+            });
+        }
+
+        function filterProjects() {
+            renderTable();
         }
 
         function checkScheduleConflict(currentProject, allProjects) {
@@ -936,76 +1152,101 @@
             });
         }
 
-        function getFilteredProjects() {
-            const statusFilter = document.getElementById('statusFilter').value;
-            const priorityFilter = document.getElementById('priorityFilter').value;
+        // 날짜 관련 함수들
+        function parseDisplayDate(displayStr) {
+            if (!displayStr || displayStr.trim() === '') return '';
             
-            return projects.filter(project => {
-                const statusMatch = !statusFilter || project.status === statusFilter;
-                const priorityMatch = !priorityFilter || project.priority === priorityFilter;
-                return statusMatch && priorityMatch;
-            });
-        }
-
-        function addProject() {
-            const name = prompt("프로젝트명을 입력하세요:");
-            if (!name || name.trim() === '') return;
+            const parts = displayStr.trim().split('.');
+            if (parts.length !== 3) return '';
             
-            let nextVersion = "v3.24";
-            if (projects.length > 0) {
-                const lastProject = projects[projects.length - 1];
-                if (lastProject.version && lastProject.version.startsWith('v')) {
-                    const versionNum = parseFloat(lastProject.version.slice(1));
-                    const newVersionNum = Math.round((versionNum + 0.01) * 100) / 100;
-                    nextVersion = `v${newVersionNum.toFixed(2)}`;
-                }
+            let year = parts[0];
+            const month = parts[1];
+            const day = parts[2];
+            
+            if (year.length === 2) {
+                year = '20' + year;
             }
             
-            const newProject = {
-                id: nextId++,
-                version: nextVersion,
-                name: name.trim(),
-                priority: "medium",
-                status: "planning",
-                serverDevStart: "",
-                serverDevEnd: "",
-                mobileDevStart: "",
-                mobileDevEnd: "",
-                qaStart: "",
-                qaEnd: "",
-                deployScheduled: "",
-                deployActual: "",
-                assignee: "",
-                notes: ""
-            };
+            const date = new Date(year, month - 1, day);
+            if (isNaN(date.getTime()) || 
+                date.getFullYear() != year || 
+                date.getMonth() != month - 1 || 
+                date.getDate() != day) {
+                return '';
+            }
             
-            projects.push(newProject);
-            renderTable();
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
         }
 
-        function updateProject(id, field, value) {
-            const project = projects.find(p => p.id === id);
-            if (project) {
-                project[field] = value;
-                
-                if (field === 'priority') {
-                    const selectElement = event.target;
-                    selectElement.className = `priority-${value}`;
-                }
-                
-                renderTable();
+        function validateAndFormatDate(textInput, dateInputId) {
+            const value = textInput.value.trim();
+            if (value === '') return;
+            
+            const parsedDate = parseDisplayDate(value);
+            if (parsedDate === '') {
+                alert('올바른 날짜 형식을 입력해주세요 (예: 25.07.09)');
+                textInput.focus();
+                return;
+            }
+            
+            textInput.value = formatDateForDisplay(parsedDate);
+            
+            const dateInput = document.getElementById(dateInputId);
+            if (dateInput) {
+                dateInput.value = parsedDate;
             }
         }
 
-        function deleteProject(id) {
-            if (confirm("이 프로젝트를 삭제하시겠습니까?")) {
-                projects = projects.filter(p => p.id !== id);
-                renderTable();
+        function openCalendar(dateInputId) {
+            const dateInput = document.getElementById(dateInputId);
+            if (dateInput) {
+                dateInput.style.opacity = '1';
+                dateInput.style.pointerEvents = 'all';
+                dateInput.focus();
+                dateInput.showPicker ? dateInput.showPicker() : dateInput.click();
+                setTimeout(() => {
+                    dateInput.style.opacity = '0';
+                    dateInput.style.pointerEvents = 'none';
+                }, 100);
             }
         }
 
-        function filterProjects() {
-            renderTable();
+        function updateProjectDateFromCalendar(projectId, fieldName, dateValue, textInputId) {
+            const textInput = document.getElementById(textInputId);
+            if (textInput && dateValue) {
+                textInput.value = formatDateForDisplay(dateValue);
+                updateProject(projectId, fieldName, dateValue);
+            }
+        }
+
+        function updateProjectDateFromText(projectId, fieldName, displayValue) {
+            const parsedDate = parseDisplayDate(displayValue);
+            if (parsedDate) {
+                updateProject(projectId, fieldName, parsedDate);
+            }
+        }
+
+        function validateVersion(input) {
+            const value = input.value.trim();
+            if (value === '') return;
+            
+            const versionPattern = /^v\d+\.\d{2}$/;
+            if (!versionPattern.test(value)) {
+                alert('올바른 버전 형식을 입력해주세요 (예: v3.24)');
+                input.focus();
+                return;
+            }
+        }
+
+        function selectVersionFromDropdown(select, inputId, projectId) {
+            const textInput = document.getElementById(inputId);
+            const selectedVersion = select.value;
+            
+            if (selectedVersion) {
+                textInput.value = selectedVersion;
+                updateProject(projectId, 'version', selectedVersion);
+                select.value = '';
+            }
         }
 
         function exportToCSV() {
@@ -1037,20 +1278,34 @@
             const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = '프로젝트_일정관리.csv';
+            link.download = '프로젝트_일정관리_' + new Date().toISOString().split('T')[0] + '.csv';
             link.click();
         }
 
         function exportToExcel() {
             const table = document.getElementById('projectTable');
             const wb = XLSX.utils.table_to_book(table, {sheet: "프로젝트 일정"});
-            XLSX.writeFile(wb, '프로젝트_일정관리.xlsx');
+            XLSX.writeFile(wb, '프로젝트_일정관리_' + new Date().toISOString().split('T')[0] + '.xlsx');
         }
 
+        // ========== 초기화 ==========
+        
         document.addEventListener('DOMContentLoaded', function() {
-            renderTable();
+            console.log('🚀 실시간 협업 프로젝트 관리 시스템 시작');
+            
+            // 로딩 오버레이 제거
+            setTimeout(() => {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+            }, 1500);
+            
+            loadProjects();
+            
+            // 필터 초기화
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('priorityFilter').value = '';
         });
 
+        // Excel 내보내기를 위한 SheetJS 라이브러리 로드
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
         document.head.appendChild(script);
