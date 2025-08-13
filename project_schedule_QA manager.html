@@ -273,18 +273,19 @@
         .date-input-container {
             position: relative;
             display: inline-block;
-            width: 120px;
+            width: 140px;
         }
 
         .date-input {
             width: 100%;
-            padding: 6px 8px;
+            padding: 6px 12px;
             border: 1px solid #e2e8f0;
             border-radius: 6px;
             font-size: 0.85rem;
             text-align: center;
             font-weight: 500;
             background: white;
+            padding-right: 30px;
         }
 
         .date-input:focus {
@@ -494,7 +495,7 @@
                 </div>
                 <div class="legend-item">
                     <span>📅</span>
-                    <span>날짜 필드 클릭하여 달력 선택</span>
+                    <span>날짜 형식: 25.07.09 (직접입력 또는 📅클릭)</span>
                 </div>
                 <div class="legend-item">
                     <span>🔢</span>
@@ -651,7 +652,7 @@
             }
         }
 
-        // 날짜 관련 함수들 (간단한 방식)
+        // 날짜 관련 함수들 (25.07.09 형식)
         function formatDateForDisplay(dateStr) {
             if (!dateStr) return '';
             const date = new Date(dateStr);
@@ -661,21 +662,111 @@
             const month = (date.getMonth() + 1).toString().padStart(2, '0');
             const day = date.getDate().toString().padStart(2, '0');
             
-            return `${year}-${month}-${day}`;
+            return `${year}.${month}.${day}`;
         }
 
         function createDateInputCell(projectId, fieldName, dateValue) {
             const displayValue = formatDateForDisplay(dateValue);
+            const textInputId = `text_${fieldName}_${projectId}`;
+            const dateInputId = `date_${fieldName}_${projectId}`;
             
             return `
                 <td>
                     <div class="date-input-container">
+                        <input type="text" class="date-input" 
+                               value="${displayValue}" 
+                               placeholder="25.07.09"
+                               id="${textInputId}"
+                               onchange="updateProjectDateFromText(${projectId}, '${fieldName}', this.value)"
+                               onblur="validateAndFormatDate(this, '${dateInputId}')">
                         <input type="date" class="date-input" 
                                value="${dateValue}" 
-                               onchange="updateProject(${projectId}, '${fieldName}', this.value)">
+                               id="${dateInputId}"
+                               style="position: absolute; top: 0; left: 0; opacity: 0; pointer-events: none;"
+                               onchange="updateProjectDateFromCalendar(${projectId}, '${fieldName}', this.value, '${textInputId}')">
+                        <div style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; z-index: 10;"
+                             onclick="openCalendar('${dateInputId}')">📅</div>
                     </div>
                 </td>
             `;
+        }
+
+        function openCalendar(dateInputId) {
+            const dateInput = document.getElementById(dateInputId);
+            if (dateInput) {
+                dateInput.style.opacity = '1';
+                dateInput.style.pointerEvents = 'all';
+                dateInput.focus();
+                dateInput.showPicker ? dateInput.showPicker() : dateInput.click();
+                setTimeout(() => {
+                    dateInput.style.opacity = '0';
+                    dateInput.style.pointerEvents = 'none';
+                }, 100);
+            }
+        }
+
+        function updateProjectDateFromCalendar(projectId, fieldName, dateValue, textInputId) {
+            const textInput = document.getElementById(textInputId);
+            if (textInput && dateValue) {
+                textInput.value = formatDateForDisplay(dateValue);
+                updateProject(projectId, fieldName, dateValue);
+            }
+        }
+
+        function updateProjectDateFromText(projectId, fieldName, displayValue) {
+            const parsedDate = parseDisplayDate(displayValue);
+            if (parsedDate) {
+                updateProject(projectId, fieldName, parsedDate);
+            }
+        }
+
+        function parseDisplayDate(displayStr) {
+            if (!displayStr || displayStr.trim() === '') return '';
+            
+            // 25.07.09 형식 파싱
+            const parts = displayStr.trim().split('.');
+            if (parts.length !== 3) return '';
+            
+            let year = parts[0];
+            const month = parts[1];
+            const day = parts[2];
+            
+            // 2자리 년도면 20XX로 변환
+            if (year.length === 2) {
+                year = '20' + year;
+            }
+            
+            // 유효성 검사
+            const date = new Date(year, month - 1, day);
+            if (isNaN(date.getTime()) || 
+                date.getFullYear() != year || 
+                date.getMonth() != month - 1 || 
+                date.getDate() != day) {
+                return '';
+            }
+            
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+
+        function validateAndFormatDate(textInput, dateInputId) {
+            const value = textInput.value.trim();
+            if (value === '') return;
+            
+            const parsedDate = parseDisplayDate(value);
+            if (parsedDate === '') {
+                alert('올바른 날짜 형식을 입력해주세요 (예: 25.07.09)');
+                textInput.focus();
+                return;
+            }
+            
+            // 텍스트 필드 포맷팅
+            textInput.value = formatDateForDisplay(parsedDate);
+            
+            // 숨겨진 date input도 업데이트
+            const dateInput = document.getElementById(dateInputId);
+            if (dateInput) {
+                dateInput.value = parsedDate;
+            }
         }
 
         // 드래그 앤 드롭 관련 함수들
