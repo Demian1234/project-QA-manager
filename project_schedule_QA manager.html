@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프로젝트 배포 및 QA 일정 관리</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 2000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .add-project-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .add-project-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .filter-section {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-size: 0.9rem;
+            color: #4a5568;
+            font-weight: 600;
+        }
+
+        .filter-select {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            font-size: 0.9rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+            white-space: nowrap;
+        }
+
+        th {
+            background: linear-gradient(135deg, #f7fafc, #edf2f7);
+            color: #2d3748;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .project-name {
+            font-weight: 600;
+            color: #2d3748;
+            min-width: 150px;
+        }
+
+        .priority {
+            min-width: 80px;
+        }
+
+        .priority-high { color: #e53e3e; font-weight: 600; }
+        .priority-medium { color: #38a169; font-weight: 600; }
+        .priority-low { color: #eab308; font-weight: 600; }
+
+        .status {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .status-planning { background: #bee3f8; color: #2b6cb0; }
+        .status-development { background: #fbb6ce; color: #b83280; }
+        .status-qa { background: #2d3748; color: #ffffff; }
+        .status-deployment { background: #c6f6d5; color: #276749; }
+        .status-completed { background: #d6f5d6; color: #22543d; }
+
+        .version-container {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .version-input {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 6px 30px 6px 8px;
+            font-size: 0.85rem;
+            width: 80px;
+            text-align: center;
+            font-weight: 600;
+            color: #4a5568;
+            background: #f7fafc;
+        }
+
+        .version-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+
+        .version-dropdown {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .version-arrow {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.8rem;
+            color: #667eea;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .date-input {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 6px 35px 6px 12px;
+            font-size: 0.85rem;
+            width: 110px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .date-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+
+        .date-input::placeholder {
+            color: #a0aec0;
+            font-size: 0.8rem;
+        }
+
+        .date-picker {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 25px;
+            height: 25px;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .calendar-icon {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.9rem;
+            color: #667eea;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .conflict {
+            background-color: #fed7d7 !important;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { background-color: #fed7d7; }
+            50% { background-color: #fbb6ce; }
+        }
+
+        .notes {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .project-name-input {
+            border: 1px solid transparent;
+            background: transparent;
+            font-weight: 600;
+            color: #2d3748;
+            padding: 4px 8px;
+            border-radius: 4px;
+            min-width: 150px;
+            transition: all 0.2s ease;
+        }
+
+        .project-name-input:hover {
+            border-color: #e2e8f0;
+            background: #f7fafc;
+        }
+
+        .project-name-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        }
+
+        .draggable-row {
+            cursor: move;
+            transition: all 0.3s ease;
+        }
+
+        .draggable-row:hover {
+            background-color: #f7fafc;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .draggable-row.dragging {
+            opacity: 0.5;
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .drag-handle {
+            cursor: grab;
+            color: #a0aec0;
+            font-size: 1.2rem;
+            padding: 0 8px;
+            user-select: none;
+        }
+
+        .drag-handle:hover {
+            color: #667eea;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .drop-indicator {
+            height: 2px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            margin: 2px 0;
+            border-radius: 1px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .drop-indicator.active {
+            opacity: 1;
+            animation: glow 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 5px rgba(102, 126, 234, 0.5); }
+            to { box-shadow: 0 0 15px rgba(102, 126, 234, 0.8); }
+        }
+
+        .export-section {
+            margin-top: 30px;
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #f7fafc, #edf2f7);
+            border-radius: 12px;
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, #38a169, #48bb78);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(56, 161, 105, 0.3);
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(56, 161, 105, 0.4);
+        }
+
+        .legend {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f7fafc, #edf2f7);
+            border-radius: 12px;
+        }
+
+        .legend h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-section {
+                justify-content: center;
+            }
+            
+            table {
+                font-size: 0.8rem;
+            }
+            
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>프로젝트 배포 및 QA 일정 관리</h1>
+            <p>여러 프로젝트의 우선순위와 일정을 체계적으로 관리하세요</p>
+        </div>
+
+        <div class="controls">
+            <button class="add-project-btn" onclick="addProject()">+ 새 프로젝트 추가</button>
+            
+            <div class="filter-section">
+                <div class="filter-group">
+                    <label>상태 필터</label>
+                    <select class="filter-select" id="statusFilter" onchange="filterProjects()">
+                        <option value="">전체</option>
+                        <option value="planning">기획</option>
+                        <option value="development">개발</option>
+                        <option value="qa">QA</option>
+                        <option value="deployment">배포</option>
+                        <option value="completed">완료</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>우선순위 필터</label>
+                    <select class="filter-select" id="priorityFilter" onchange="filterProjects()">
+                        <option value="">전체</option>
+                        <option value="high">높음</option>
+                        <option value="medium">보통</option>
+                        <option value="low">낮음</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="projectTable">
+                <thead>
+                    <tr>
+                        <th style="width: 30px;">순서</th>
+                        <th>앱 버전</th>
+                        <th>프로젝트명</th>
+                        <th>우선순위</th>
+                        <th>현재 상태</th>
+                        <th>서버 개발 시작</th>
+                        <th>서버 개발 완료</th>
+                        <th>모바일 개발 시작</th>
+                        <th>모바일 개발 완료</th>
+                        <th>QA 시작</th>
+                        <th>QA 완료</th>
+                        <th>배포 예정</th>
+                        <th>실제 배포</th>
+                        <th>담당자</th>
+                        <th>비고</th>
+                        <th>작업</th>
+                    </tr>
+                </thead>
+                <tbody id="projectTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div class="legend">
+            <h3>범례 및 사용법</h3>
+            <div class="legend-grid">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #fed7d7;"></div>
+                    <span>일정 충돌 위험</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e53e3e;"></div>
+                    <span>높은 우선순위</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #38a169;"></div>
+                    <span>보통 우선순위</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #eab308;"></div>
+                    <span>낮은 우선순위</span>
+                </div>
+                <div class="legend-item">
+                    <div class="drag-handle" style="margin: 0;">⋮⋮</div>
+                    <span>드래그하여 순서 변경</span>
+                </div>
+                <div class="legend-item">
+                    <span>💡</span>
+                    <span>프로젝트명 클릭하여 편집</span>
+                </div>
+                <div class="legend-item">
+                    <span>📅</span>
+                    <span>날짜 형식: 25-08-15 (직접입력 또는 📅클릭)</span>
+                </div>
+                <div class="legend-item">
+                    <span>🔢</span>
+                    <span>앱 버전: v3.24부터 0.01씩 증가 (직접입력 또는 ▼선택)</span>
+                </div>
+                <div class="legend-item">
+                    <span>📱</span>
+                    <span>서버/모바일 개발 일정 분리 관리</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="export-section">
+            <h3 style="margin-bottom: 15px; color: #2d3748;">내보내기</h3>
+            <button class="export-btn" onclick="exportToCSV()">CSV로 내보내기</button>
+            <button class="export-btn" onclick="exportToExcel()">Excel로 내보내기</button>
+        </div>
+    </div>
+
+    <script>
+        let projects = [
+            {
+                id: 1,
+                version: "v3.24",
+                name: "사용자 인증 시스템 개선",
+                priority: "high",
+                status: "qa",
+                serverDevStart: "2025-07-15",
+                serverDevEnd: "2025-08-01",
+                mobileDevStart: "2025-07-20",
+                mobileDevEnd: "2025-08-05",
+                qaStart: "2025-08-06",
+                qaEnd: "2025-08-12",
+                deployScheduled: "2025-08-15",
+                deployActual: "",
+                assignee: "김개발",
+                notes: "보안 강화 필요"
+            },
+            {
+                id: 2,
+                version: "v3.25",
+                name: "모바일 앱 UI 리뉴얼",
+                priority: "medium",
+                status: "development",
+                serverDevStart: "2025-08-01",
+                serverDevEnd: "2025-08-10",
+                mobileDevStart: "2025-08-05",
+                mobileDevEnd: "2025-08-20",
+                qaStart: "2025-08-21",
+                qaEnd: "2025-08-27",
+                deployScheduled: "2025-08-30",
+                deployActual: "",
+                assignee: "이디자인",
+                notes: "디자인 시스템 적용"
+            },
+            {
+                id: 3,
+                version: "v3.26",
+                name: "결제 시스템 통합",
+                priority: "high",
+                status: "planning",
+                serverDevStart: "2025-08-15",
+                serverDevEnd: "2025-09-05",
+                mobileDevStart: "2025-08-20",
+                mobileDevEnd: "2025-09-10",
+                qaStart: "2025-09-11",
+                qaEnd: "2025-09-17",
+                deployScheduled: "2025-09-20",
+                deployActual: "",
+                assignee: "박백엔드",
+                notes: "외부 API 연동"
+            },
+            {
+                id: 4,
+                version: "v3.27",
+                name: "데이터 분석 대시보드",
+                priority: "low",
+                status: "development",
+                serverDevStart: "2025-08-10",
+                serverDevEnd: "2025-08-25",
+                mobileDevStart: "",
+                mobileDevEnd: "",
+                qaStart: "2025-08-26",
+                qaEnd: "2025-09-01",
+                deployScheduled: "2025-09-05",
+                deployActual: "",
+                assignee: "최데이터",
+                notes: "웹 전용 - 차트 라이브러리 업데이트"
+            }
+        ];
+
+        let nextId = 5;
+        let draggedElement = null;
+        let draggedProjectId = null;
+
+        // 버전 관련 함수들
+        function generateVersionOptions() {
+            const options = [];
+            // v3.24부터 v3.99까지 0.01씩 증가
+            for (let i = 324; i <= 399; i++) {
+                const major = Math.floor(i / 100);
+                const minor = i % 100;
+                const version = `v${major}.${minor.toString().padStart(2, '0')}`;
+                options.push(version);
+            }
+            return options;
+        }
+
+        function createVersionCell(projectId, version) {
+            const versionOptions = generateVersionOptions();
+            const inputId = `version_${projectId}`;
+            const selectId = `version_select_${projectId}`;
+            
+            return `
+                <td>
+                    <div class="version-container">
+                        <input type="text" class="version-input" 
+                               value="${version}" 
+                               placeholder="v3.24" 
+                               id="${inputId}"
+                               onchange="updateProject(${projectId}, 'version', this.value)" 
+                               onblur="validateVersion(this)">
+                        <select class="version-dropdown" 
+                                id="${selectId}"
+                                onchange="selectVersionFromDropdown(this, '${inputId}', ${projectId})">
+                            <option value="">선택</option>
+                            ${versionOptions.map(v => `<option value="${v}" ${v === version ? 'selected' : ''}>${v}</option>`).join('')}
+                        </select>
+                        <span class="version-arrow">▼</span>
+                    </div>
+                </td>
+            `;
+        }
+
+        function validateVersion(input) {
+            const value = input.value.trim();
+            if (value === '') return;
+            
+            // v3.24 형식 검증
+            const versionPattern = /^v\d+\.\d{2}$/;
+            if (!versionPattern.test(value)) {
+                alert('올바른 버전 형식을 입력해주세요 (예: v3.24)');
+                input.focus();
+                return;
+            }
+        }
+
+        function selectVersionFromDropdown(select, inputId, projectId) {
+            const textInput = document.getElementById(inputId);
+            const selectedVersion = select.value;
+            
+            if (selectedVersion) {
+                textInput.value = selectedVersion;
+                updateProject(projectId, 'version', selectedVersion);
+                select.value = ''; // 드롭다운 초기화
+            }
+        }
+        function formatDateForDisplay(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return '';
+            
+            const year = date.getFullYear().toString().slice(-2);
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            
+            return `${year}-${month}-${day}`;
+        }
+
+        function parseDisplayDate(displayStr) {
+            if (!displayStr || displayStr.trim() === '') return '';
+            
+            // 25-08-15 또는 2025-08-15 형식 지원
+            const parts = displayStr.trim().split('-');
+            if (parts.length !== 3) return '';
+            
+            let year = parts[0];
+            const month = parts[1];
+            const day = parts[2];
+            
+            // 2자리 년도면 20XX로 변환
+            if (year.length === 2) {
+                year = '20' + year;
+            }
+            
+            // 유효성 검사
+            const date = new Date(year, month - 1, day);
+            if (isNaN(date.getTime()) || 
+                date.getFullYear() != year || 
+                date.getMonth() != month - 1 || 
+                date.getDate() != day) {
+                return '';
+            }
+            
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+
+        function validateAndFormatDate(input) {
+            const value = input.value.trim();
+            if (value === '') return;
+            
+            const parsedDate = parseDisplayDate(value);
+            if (parsedDate === '') {
+                alert('올바른 날짜 형식을 입력해주세요 (예: 25-08-15 또는 2025-08-15)');
+                input.focus();
+                return;
+            }
+            
+            // 표시용 형식으로 다시 포맷팅
+            input.value = formatDateForDisplay(parsedDate);
+            
+            // 연결된 date picker도 업데이트
+            const inputId = input.id;
+            if (inputId) {
+                const pickerId = inputId.replace(/^(.+)_(\d+)$/, 'picker_$1_$2');
+                const picker = document.getElementById(pickerId);
+                if (picker) {
+                    picker.value = parsedDate;
+                }
+            }
+        }
+
+        function updateProjectDate(id, field, displayValue) {
+            const parsedDate = parseDisplayDate(displayValue);
+            updateProject(id, field, parsedDate);
+            
+            // 연결된 date picker도 업데이트
+            const pickerId = `picker_${field}_${id}`;
+            const picker = document.getElementById(pickerId);
+            if (picker && parsedDate) {
+                picker.value = parsedDate;
+            }
+        }
+
+        function createDateInputCell(projectId, fieldName, dateValue) {
+            const displayValue = formatDateForDisplay(dateValue);
+            const inputId = `${fieldName}_${projectId}`;
+            const pickerId = `picker_${fieldName}_${projectId}`;
+            
+            return `
+                <td>
+                    <div class="date-input-container">
+                        <input type="text" class="date-input" 
+                               value="${displayValue}" 
+                               placeholder="25-08-15" 
+                               id="${inputId}"
+                               onchange="updateProjectDate(${projectId}, '${fieldName}', this.value)" 
+                               onblur="validateAndFormatDate(this)">
+                        <input type="date" class="date-picker" 
+                               id="${pickerId}"
+                               value="${dateValue}"
+                               onchange="selectDateFromPicker(this, '${inputId}', ${projectId}, '${fieldName}')">
+                        <span class="calendar-icon">📅</span>
+                    </div>
+                </td>
+            `;
+        }
+
+        function triggerDatePicker(pickerId) {
+            const picker = document.getElementById(pickerId);
+            if (picker) {
+                picker.click();
+            }
+        }
+
+        function selectDateFromPicker(picker, inputId, projectId, fieldName) {
+            const textInput = document.getElementById(inputId);
+            const selectedDate = picker.value;
+            
+            if (selectedDate) {
+                const displayDate = formatDateForDisplay(selectedDate);
+                textInput.value = displayDate;
+                updateProject(projectId, fieldName, selectedDate);
+                
+                // 테이블 다시 렌더링하지 않고 바로 업데이트
+                const project = projects.find(p => p.id === projectId);
+                if (project) {
+                    project[fieldName] = selectedDate;
+                }
+            }
+        }
+
+        // 페이지 로드 시 날짜 picker들 초기화
+        function initializeDatePickers() {
+            // 텍스트 입력이 변경될 때 date picker도 동기화
+            document.addEventListener('input', function(e) {
+                if (e.target.classList.contains('date-input')) {
+                    const inputId = e.target.id;
+                    if (inputId) {
+                        const pickerId = inputId.replace(/^(.+)_(\d+)$/, 'picker_$1_$2');
+                        const picker = document.getElementById(pickerId);
+                        if (picker) {
+                            const parsedDate = parseDisplayDate(e.target.value);
+                            if (parsedDate) {
+                                picker.value = parsedDate;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 드래그 앤 드롭 관련 함수들
+        function handleDragStart(e) {
+            draggedElement = e.target;
+            draggedProjectId = parseInt(e.target.dataset.projectId);
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const afterElement = getDragAfterElement(document.getElementById('projectTableBody'), e.clientY);
+            const dragging = document.querySelector('.dragging');
+            
+            if (afterElement == null) {
+                document.getElementById('projectTableBody').appendChild(dragging);
+            } else {
+                document.getElementById('projectTableBody').insertBefore(dragging, afterElement);
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            if (draggedProjectId && e.target !== draggedElement) {
+                const allRows = Array.from(document.querySelectorAll('.draggable-row:not(.dragging)'));
+                const targetRow = e.target.closest('.draggable-row');
+                
+                if (targetRow) {
+                    const targetProjectId = parseInt(targetRow.dataset.projectId);
+                    reorderProjects(draggedProjectId, targetProjectId);
+                }
+            }
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            draggedElement = null;
+            draggedProjectId = null;
+            renderTable(); // 최종 순서로 다시 렌더링
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.draggable-row:not(.dragging)')];
+            
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        function reorderProjects(draggedId, targetId) {
+            const draggedIndex = projects.findIndex(p => p.id === draggedId);
+            const targetIndex = projects.findIndex(p => p.id === targetId);
+            
+            if (draggedIndex > -1 && targetIndex > -1) {
+                const [draggedProject] = projects.splice(draggedIndex, 1);
+                projects.splice(targetIndex, 0, draggedProject);
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('projectTableBody');
+            tbody.innerHTML = '';
+
+            const filteredProjects = getFilteredProjects();
+            
+            filteredProjects.forEach((project, index) => {
+                const row = document.createElement('tr');
+                row.className = 'draggable-row';
+                row.draggable = true;
+                row.dataset.projectId = project.id;
+                
+                // 일정 충돌 검사
+                const hasConflict = checkScheduleConflict(project, filteredProjects);
+                if (hasConflict) {
+                    row.classList.add('conflict');
+                }
+
+                row.innerHTML = `
+                    <td class="drag-handle">⋮⋮</td>
+                    ${createVersionCell(project.id, project.version)}
+                    <td class="project-name">
+                        <input type="text" class="project-name-input" value="${project.name}" 
+                               onchange="updateProject(${project.id}, 'name', this.value)"
+                               onblur="this.style.background='transparent'"
+                               onclick="this.style.background='white'">
+                    </td>
+                    <td class="priority">
+                        <select onchange="updateProject(${project.id}, 'priority', this.value)">
+                            <option value="high" ${project.priority === 'high' ? 'selected' : ''} class="priority-high">높음</option>
+                            <option value="medium" ${project.priority === 'medium' ? 'selected' : ''} class="priority-medium">보통</option>
+                            <option value="low" ${project.priority === 'low' ? 'selected' : ''} class="priority-low">낮음</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select class="status status-${project.status}" onchange="updateProject(${project.id}, 'status', this.value)">
+                            <option value="planning" ${project.status === 'planning' ? 'selected' : ''}>기획</option>
+                            <option value="development" ${project.status === 'development' ? 'selected' : ''}>개발</option>
+                            <option value="qa" ${project.status === 'qa' ? 'selected' : ''}>QA</option>
+                            <option value="deployment" ${project.status === 'deployment' ? 'selected' : ''}>배포</option>
+                            <option value="completed" ${project.status === 'completed' ? 'selected' : ''}>완료</option>
+                        </select>
+                    </td>
+                    ${createDateInputCell(project.id, 'serverDevStart', project.serverDevStart)}
+                    ${createDateInputCell(project.id, 'serverDevEnd', project.serverDevEnd)}
+                    ${createDateInputCell(project.id, 'mobileDevStart', project.mobileDevStart)}
+                    ${createDateInputCell(project.id, 'mobileDevEnd', project.mobileDevEnd)}
+                    ${createDateInputCell(project.id, 'qaStart', project.qaStart)}
+                    ${createDateInputCell(project.id, 'qaEnd', project.qaEnd)}
+                    ${createDateInputCell(project.id, 'deployScheduled', project.deployScheduled)}
+                    ${createDateInputCell(project.id, 'deployActual', project.deployActual)}
+                    <td><input type="text" value="${project.assignee}" onchange="updateProject(${project.id}, 'assignee', this.value)" style="min-width: 100px;"></td>
+                    <td class="notes"><input type="text" value="${project.notes}" onchange="updateProject(${project.id}, 'notes', this.value)" style="width: 150px;"></td>
+                    <td><button onclick="deleteProject(${project.id})" style="background: #e53e3e; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">삭제</button></td>
+                `;
+                
+                // 드래그 이벤트 리스너 추가
+                row.addEventListener('dragstart', handleDragStart);
+                row.addEventListener('dragover', handleDragOver);
+                row.addEventListener('drop', handleDrop);
+                row.addEventListener('dragend', handleDragEnd);
+                
+                tbody.appendChild(row);
+            });
+
+            // 우선순위 색상 적용
+            document.querySelectorAll('.priority select').forEach(select => {
+                const value = select.value;
+                select.className = `priority-${value}`;
+            });
+        }
+
+        function checkScheduleConflict(currentProject, allProjects) {
+            const current = currentProject;
+            
+            return allProjects.some(other => {
+                if (other.id === current.id) return false;
+                
+                // QA 일정 충돌 검사
+                const currentQAStart = new Date(current.qaStart);
+                const currentQAEnd = new Date(current.qaEnd);
+                const otherQAStart = new Date(other.qaStart);
+                const otherQAEnd = new Date(other.qaEnd);
+                
+                if (currentQAStart && currentQAEnd && otherQAStart && otherQAEnd) {
+                    const qaOverlap = (currentQAStart <= otherQAEnd && currentQAEnd >= otherQAStart);
+                    if (qaOverlap) return true;
+                }
+                
+                // 배포 일정 충돌 검사 (같은 날 배포 방지)
+                const currentDeploy = new Date(current.deployScheduled);
+                const otherDeploy = new Date(other.deployScheduled);
+                
+                if (currentDeploy && otherDeploy) {
+                    const deployConflict = currentDeploy.toDateString() === otherDeploy.toDateString();
+                    if (deployConflict) return true;
+                }
+                
+                return false;
+            });
+        }
+
+        function getFilteredProjects() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const priorityFilter = document.getElementById('priorityFilter').value;
+            
+            return projects.filter(project => {
+                const statusMatch = !statusFilter || project.status === statusFilter;
+                const priorityMatch = !priorityFilter || project.priority === priorityFilter;
+                return statusMatch && priorityMatch;
+            });
+        }
+
+        function addProject() {
+            const name = prompt("프로젝트명을 입력하세요:");
+            if (!name) return;
+            
+            const newProject = {
+                id: nextId++,
+                name: name,
+                priority: "medium",
+                status: "planning",
+                devStart: "",
+                devEnd: "",
+                qaStart: "",
+                qaEnd: "",
+                deployScheduled: "",
+                deployActual: "",
+                assignee: "",
+                notes: ""
+            };
+            
+            projects.push(newProject);
+            renderTable();
+        }
+
+        function getFilteredProjects() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const priorityFilter = document.getElementById('priorityFilter').value;
+            
+            return projects.filter(project => {
+                const statusMatch = !statusFilter || project.status === statusFilter;
+                const priorityMatch = !priorityFilter || project.priority === priorityFilter;
+                return statusMatch && priorityMatch;
+            });
+        }
+
+        function updateProject(id, field, value) {
+            const project = projects.find(p => p.id === id);
+            if (project) {
+                project[field] = value;
+                
+                // 상태 변경 시 우선순위 색상 업데이트
+                if (field === 'priority') {
+                    const selectElement = event.target;
+                    selectElement.className = `priority-${value}`;
+                }
+                
+                renderTable();
+            }
+        }
+
+        function deleteProject(id) {
+            if (confirm("이 프로젝트를 삭제하시겠습니까?")) {
+                projects = projects.filter(p => p.id !== id);
+                renderTable();
+            }
+        }
+
+        function filterProjects() {
+            renderTable();
+        }
+
+        function exportToCSV() {
+            const headers = [
+                '앱버전', '프로젝트명', '우선순위', '현재상태', '서버개발시작', '서버개발완료', '모바일개발시작', '모바일개발완료',
+                'QA시작', 'QA완료', '배포예정', '실제배포', '담당자', '비고'
+            ];
+            
+            const csvContent = [
+                headers.join(','),
+                ...projects.map(project => [
+                    project.version,
+                    `"${project.name}"`,
+                    project.priority,
+                    project.status,
+                    formatDateForDisplay(project.serverDevStart),
+                    formatDateForDisplay(project.serverDevEnd),
+                    formatDateForDisplay(project.mobileDevStart),
+                    formatDateForDisplay(project.mobileDevEnd),
+                    formatDateForDisplay(project.qaStart),
+                    formatDateForDisplay(project.qaEnd),
+                    formatDateForDisplay(project.deployScheduled),
+                    formatDateForDisplay(project.deployActual),
+                    `"${project.assignee}"`,
+                    `"${project.notes}"`
+                ].join(','))
+            ].join('\n');
+            
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = '프로젝트_일정관리.csv';
+            link.click();
+        }
+
+        function exportToExcel() {
+            const table = document.getElementById('projectTable');
+            const wb = XLSX.utils.table_to_book(table, {sheet: "프로젝트 일정"});
+            XLSX.writeFile(wb, '프로젝트_일정관리.xlsx');
+        }
+
+        // 페이지 로드 시 테이블 렌더링 및 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            // 데이터 존재 확인 및 렌더링
+            console.log('프로젝트 데이터 로드 중...', projects.length, '개 프로젝트');
+            
+            if (projects.length === 0) {
+                console.warn('프로젝트 데이터가 없습니다. 샘플 데이터를 다시 로드합니다.');
+                // 샘플 데이터 재설정
+                projects = [
+                    {
+                        id: 1,
+                        version: "v3.24",
+                        name: "사용자 인증 시스템 개선",
+                        priority: "high",
+                        status: "qa",
+                        serverDevStart: "2025-07-15",
+                        serverDevEnd: "2025-08-01",
+                        mobileDevStart: "2025-07-20",
+                        mobileDevEnd: "2025-08-05",
+                        qaStart: "2025-08-06",
+                        qaEnd: "2025-08-12",
+                        deployScheduled: "2025-08-15",
+                        deployActual: "",
+                        assignee: "김개발",
+                        notes: "보안 강화 필요"
+                    },
+                    {
+                        id: 2,
+                        version: "v3.25",
+                        name: "모바일 앱 UI 리뉴얼",
+                        priority: "medium",
+                        status: "development",
+                        serverDevStart: "2025-08-01",
+                        serverDevEnd: "2025-08-10",
+                        mobileDevStart: "2025-08-05",
+                        mobileDevEnd: "2025-08-20",
+                        qaStart: "2025-08-21",
+                        qaEnd: "2025-08-27",
+                        deployScheduled: "2025-08-30",
+                        deployActual: "",
+                        assignee: "이디자인",
+                        notes: "디자인 시스템 적용"
+                    },
+                    {
+                        id: 3,
+                        version: "v3.26",
+                        name: "결제 시스템 통합",
+                        priority: "high",
+                        status: "planning",
+                        serverDevStart: "2025-08-15",
+                        serverDevEnd: "2025-09-05",
+                        mobileDevStart: "2025-08-20",
+                        mobileDevEnd: "2025-09-10",
+                        qaStart: "2025-09-11",
+                        qaEnd: "2025-09-17",
+                        deployScheduled: "2025-09-20",
+                        deployActual: "",
+                        assignee: "박백엔드",
+                        notes: "외부 API 연동"
+                    },
+                    {
+                        id: 4,
+                        version: "v3.27",
+                        name: "데이터 분석 대시보드",
+                        priority: "low",
+                        status: "development",
+                        serverDevStart: "2025-08-10",
+                        serverDevEnd: "2025-08-25",
+                        mobileDevStart: "",
+                        mobileDevEnd: "",
+                        qaStart: "2025-08-26",
+                        qaEnd: "2025-09-01",
+                        deployScheduled: "2025-09-05",
+                        deployActual: "",
+                        assignee: "최데이터",
+                        notes: "웹 전용 - 차트 라이브러리 업데이트"
+                    }
+                ];
+            }
+            
+            renderTable();
+            initializeDatePickers();
+            
+            // 성공 메시지
+            console.log('테이블 렌더링 완료!');
+        });
+
+        // Excel 내보내기를 위한 SheetJS 라이브러리 로드
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>
