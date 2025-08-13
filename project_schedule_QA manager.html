@@ -214,66 +214,6 @@
             z-index: 5;
         }
 
-        .date-input {
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 6px 35px 6px 12px;
-            font-size: 0.85rem;
-            width: 110px;
-            text-align: center;
-            font-weight: 500;
-        }
-
-        .date-input:focus {
-            outline: none;
-            border-color: #667eea;
-            background: #f7fafc;
-        }
-
-        .date-input::placeholder {
-            color: #a0aec0;
-            font-size: 0.8rem;
-        }
-
-        .date-picker {
-            position: absolute;
-            right: 5px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 25px;
-            height: 25px;
-            opacity: 0;
-            cursor: pointer;
-            z-index: 10;
-        }
-
-        .calendar-icon {
-            position: absolute;
-            right: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 0.9rem;
-            color: #667eea;
-            pointer-events: none;
-            z-index: 5;
-        }
-
-        .conflict {
-            background-color: #fed7d7 !important;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { background-color: #fed7d7; }
-            50% { background-color: #fbb6ce; }
-        }
-
-        .notes {
-            max-width: 200px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
         .project-name-input {
             border: 1px solid transparent;
             background: transparent;
@@ -330,23 +270,55 @@
             cursor: grabbing;
         }
 
-        .drop-indicator {
-            height: 2px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            margin: 2px 0;
-            border-radius: 1px;
-            opacity: 0;
-            transition: opacity 0.2s ease;
+        .date-input-container {
+            position: relative;
+            display: inline-block;
+            width: 120px;
         }
 
-        .drop-indicator.active {
+        .date-input {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            text-align: center;
+            font-weight: 500;
+            background: white;
+        }
+
+        .date-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+
+        .date-input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            border-radius: 4px;
+            margin-right: 2px;
+            opacity: 0.6;
+            filter: invert(0.8);
+        }
+
+        .date-input[type="date"]::-webkit-calendar-picker-indicator:hover {
             opacity: 1;
-            animation: glow 1s ease-in-out infinite alternate;
         }
 
-        @keyframes glow {
-            from { box-shadow: 0 0 5px rgba(102, 126, 234, 0.5); }
-            to { box-shadow: 0 0 15px rgba(102, 126, 234, 0.8); }
+        .conflict {
+            background-color: #fed7d7 !important;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { background-color: #fed7d7; }
+            50% { background-color: #fbb6ce; }
+        }
+
+        .notes {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .export-section {
@@ -522,11 +494,11 @@
                 </div>
                 <div class="legend-item">
                     <span>📅</span>
-                    <span>날짜 형식: 25-08-15 (직접입력 또는 📅클릭)</span>
+                    <span>날짜 필드 클릭하여 달력 선택</span>
                 </div>
                 <div class="legend-item">
                     <span>🔢</span>
-                    <span>앱 버전: v3.24부터 0.01씩 증가 (직접입력 또는 ▼선택)</span>
+                    <span>앱 버전: v3.24부터 0.01씩 증가</span>
                 </div>
                 <div class="legend-item">
                     <span>📱</span>
@@ -621,7 +593,6 @@
         // 버전 관련 함수들
         function generateVersionOptions() {
             const options = [];
-            // v3.24부터 v3.99까지 0.01씩 증가
             for (let i = 324; i <= 399; i++) {
                 const major = Math.floor(i / 100);
                 const minor = i % 100;
@@ -661,7 +632,6 @@
             const value = input.value.trim();
             if (value === '') return;
             
-            // v3.24 형식 검증
             const versionPattern = /^v\d+\.\d{2}$/;
             if (!versionPattern.test(value)) {
                 alert('올바른 버전 형식을 입력해주세요 (예: v3.24)');
@@ -677,9 +647,11 @@
             if (selectedVersion) {
                 textInput.value = selectedVersion;
                 updateProject(projectId, 'version', selectedVersion);
-                select.value = ''; // 드롭다운 초기화
+                select.value = '';
             }
         }
+
+        // 날짜 관련 함수들 (간단한 방식)
         function formatDateForDisplay(dateStr) {
             if (!dateStr) return '';
             const date = new Date(dateStr);
@@ -692,137 +664,18 @@
             return `${year}-${month}-${day}`;
         }
 
-        function parseDisplayDate(displayStr) {
-            if (!displayStr || displayStr.trim() === '') return '';
-            
-            // 25-08-15 또는 2025-08-15 형식 지원
-            const parts = displayStr.trim().split('-');
-            if (parts.length !== 3) return '';
-            
-            let year = parts[0];
-            const month = parts[1];
-            const day = parts[2];
-            
-            // 2자리 년도면 20XX로 변환
-            if (year.length === 2) {
-                year = '20' + year;
-            }
-            
-            // 유효성 검사
-            const date = new Date(year, month - 1, day);
-            if (isNaN(date.getTime()) || 
-                date.getFullYear() != year || 
-                date.getMonth() != month - 1 || 
-                date.getDate() != day) {
-                return '';
-            }
-            
-            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        }
-
-        function validateAndFormatDate(input) {
-            const value = input.value.trim();
-            if (value === '') return;
-            
-            const parsedDate = parseDisplayDate(value);
-            if (parsedDate === '') {
-                alert('올바른 날짜 형식을 입력해주세요 (예: 25-08-15 또는 2025-08-15)');
-                input.focus();
-                return;
-            }
-            
-            // 표시용 형식으로 다시 포맷팅
-            input.value = formatDateForDisplay(parsedDate);
-            
-            // 연결된 date picker도 업데이트
-            const inputId = input.id;
-            if (inputId) {
-                const pickerId = inputId.replace(/^(.+)_(\d+)$/, 'picker_$1_$2');
-                const picker = document.getElementById(pickerId);
-                if (picker) {
-                    picker.value = parsedDate;
-                }
-            }
-        }
-
-        function updateProjectDate(id, field, displayValue) {
-            const parsedDate = parseDisplayDate(displayValue);
-            updateProject(id, field, parsedDate);
-            
-            // 연결된 date picker도 업데이트
-            const pickerId = `picker_${field}_${id}`;
-            const picker = document.getElementById(pickerId);
-            if (picker && parsedDate) {
-                picker.value = parsedDate;
-            }
-        }
-
         function createDateInputCell(projectId, fieldName, dateValue) {
             const displayValue = formatDateForDisplay(dateValue);
-            const inputId = `${fieldName}_${projectId}`;
-            const pickerId = `picker_${fieldName}_${projectId}`;
             
             return `
                 <td>
                     <div class="date-input-container">
-                        <input type="text" class="date-input" 
-                               value="${displayValue}" 
-                               placeholder="25-08-15" 
-                               id="${inputId}"
-                               onchange="updateProjectDate(${projectId}, '${fieldName}', this.value)" 
-                               onblur="validateAndFormatDate(this)">
-                        <input type="date" class="date-picker" 
-                               id="${pickerId}"
-                               value="${dateValue}"
-                               onchange="selectDateFromPicker(this, '${inputId}', ${projectId}, '${fieldName}')">
-                        <span class="calendar-icon">📅</span>
+                        <input type="date" class="date-input" 
+                               value="${dateValue}" 
+                               onchange="updateProject(${projectId}, '${fieldName}', this.value)">
                     </div>
                 </td>
             `;
-        }
-
-        function triggerDatePicker(pickerId) {
-            const picker = document.getElementById(pickerId);
-            if (picker) {
-                picker.click();
-            }
-        }
-
-        function selectDateFromPicker(picker, inputId, projectId, fieldName) {
-            const textInput = document.getElementById(inputId);
-            const selectedDate = picker.value;
-            
-            if (selectedDate) {
-                const displayDate = formatDateForDisplay(selectedDate);
-                textInput.value = displayDate;
-                updateProject(projectId, fieldName, selectedDate);
-                
-                // 테이블 다시 렌더링하지 않고 바로 업데이트
-                const project = projects.find(p => p.id === projectId);
-                if (project) {
-                    project[fieldName] = selectedDate;
-                }
-            }
-        }
-
-        // 페이지 로드 시 날짜 picker들 초기화
-        function initializeDatePickers() {
-            // 텍스트 입력이 변경될 때 date picker도 동기화
-            document.addEventListener('input', function(e) {
-                if (e.target.classList.contains('date-input')) {
-                    const inputId = e.target.id;
-                    if (inputId) {
-                        const pickerId = inputId.replace(/^(.+)_(\d+)$/, 'picker_$1_$2');
-                        const picker = document.getElementById(pickerId);
-                        if (picker) {
-                            const parsedDate = parseDisplayDate(e.target.value);
-                            if (parsedDate) {
-                                picker.value = parsedDate;
-                            }
-                        }
-                    }
-                }
-            });
         }
 
         // 드래그 앤 드롭 관련 함수들
@@ -865,7 +718,7 @@
             e.target.classList.remove('dragging');
             draggedElement = null;
             draggedProjectId = null;
-            renderTable(); // 최종 순서로 다시 렌더링
+            renderTable();
         }
 
         function getDragAfterElement(container, y) {
@@ -887,9 +740,13 @@
             const draggedIndex = projects.findIndex(p => p.id === draggedId);
             const targetIndex = projects.findIndex(p => p.id === targetId);
             
-            if (draggedIndex > -1 && targetIndex > -1) {
+            if (draggedIndex > -1 && targetIndex > -1 && draggedIndex !== targetIndex) {
                 const [draggedProject] = projects.splice(draggedIndex, 1);
                 projects.splice(targetIndex, 0, draggedProject);
+                
+                setTimeout(() => {
+                    renderTable();
+                }, 100);
             }
         }
 
@@ -905,7 +762,6 @@
                 row.draggable = true;
                 row.dataset.projectId = project.id;
                 
-                // 일정 충돌 검사
                 const hasConflict = checkScheduleConflict(project, filteredProjects);
                 if (hasConflict) {
                     row.classList.add('conflict');
@@ -949,7 +805,6 @@
                     <td><button onclick="deleteProject(${project.id})" style="background: #e53e3e; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">삭제</button></td>
                 `;
                 
-                // 드래그 이벤트 리스너 추가
                 row.addEventListener('dragstart', handleDragStart);
                 row.addEventListener('dragover', handleDragOver);
                 row.addEventListener('drop', handleDrop);
@@ -958,7 +813,6 @@
                 tbody.appendChild(row);
             });
 
-            // 우선순위 색상 적용
             document.querySelectorAll('.priority select').forEach(select => {
                 const value = select.value;
                 select.className = `priority-${value}`;
@@ -966,14 +820,11 @@
         }
 
         function checkScheduleConflict(currentProject, allProjects) {
-            const current = currentProject;
-            
             return allProjects.some(other => {
-                if (other.id === current.id) return false;
+                if (other.id === currentProject.id) return false;
                 
-                // QA 일정 충돌 검사
-                const currentQAStart = new Date(current.qaStart);
-                const currentQAEnd = new Date(current.qaEnd);
+                const currentQAStart = new Date(currentProject.qaStart);
+                const currentQAEnd = new Date(currentProject.qaEnd);
                 const otherQAStart = new Date(other.qaStart);
                 const otherQAEnd = new Date(other.qaEnd);
                 
@@ -982,8 +833,7 @@
                     if (qaOverlap) return true;
                 }
                 
-                // 배포 일정 충돌 검사 (같은 날 배포 방지)
-                const currentDeploy = new Date(current.deployScheduled);
+                const currentDeploy = new Date(currentProject.deployScheduled);
                 const otherDeploy = new Date(other.deployScheduled);
                 
                 if (currentDeploy && otherDeploy) {
@@ -1008,15 +858,28 @@
 
         function addProject() {
             const name = prompt("프로젝트명을 입력하세요:");
-            if (!name) return;
+            if (!name || name.trim() === '') return;
+            
+            let nextVersion = "v3.24";
+            if (projects.length > 0) {
+                const lastProject = projects[projects.length - 1];
+                if (lastProject.version && lastProject.version.startsWith('v')) {
+                    const versionNum = parseFloat(lastProject.version.slice(1));
+                    const newVersionNum = Math.round((versionNum + 0.01) * 100) / 100;
+                    nextVersion = `v${newVersionNum.toFixed(2)}`;
+                }
+            }
             
             const newProject = {
                 id: nextId++,
-                name: name,
+                version: nextVersion,
+                name: name.trim(),
                 priority: "medium",
                 status: "planning",
-                devStart: "",
-                devEnd: "",
+                serverDevStart: "",
+                serverDevEnd: "",
+                mobileDevStart: "",
+                mobileDevEnd: "",
                 qaStart: "",
                 qaEnd: "",
                 deployScheduled: "",
@@ -1029,23 +892,11 @@
             renderTable();
         }
 
-        function getFilteredProjects() {
-            const statusFilter = document.getElementById('statusFilter').value;
-            const priorityFilter = document.getElementById('priorityFilter').value;
-            
-            return projects.filter(project => {
-                const statusMatch = !statusFilter || project.status === statusFilter;
-                const priorityMatch = !priorityFilter || project.priority === priorityFilter;
-                return statusMatch && priorityMatch;
-            });
-        }
-
         function updateProject(id, field, value) {
             const project = projects.find(p => p.id === id);
             if (project) {
                 project[field] = value;
                 
-                // 상태 변경 시 우선순위 색상 업데이트
                 if (field === 'priority') {
                     const selectElement = event.target;
                     selectElement.className = `priority-${value}`;
@@ -1105,94 +956,10 @@
             XLSX.writeFile(wb, '프로젝트_일정관리.xlsx');
         }
 
-        // 페이지 로드 시 테이블 렌더링 및 초기화
         document.addEventListener('DOMContentLoaded', function() {
-            // 데이터 존재 확인 및 렌더링
-            console.log('프로젝트 데이터 로드 중...', projects.length, '개 프로젝트');
-            
-            if (projects.length === 0) {
-                console.warn('프로젝트 데이터가 없습니다. 샘플 데이터를 다시 로드합니다.');
-                // 샘플 데이터 재설정
-                projects = [
-                    {
-                        id: 1,
-                        version: "v3.24",
-                        name: "사용자 인증 시스템 개선",
-                        priority: "high",
-                        status: "qa",
-                        serverDevStart: "2025-07-15",
-                        serverDevEnd: "2025-08-01",
-                        mobileDevStart: "2025-07-20",
-                        mobileDevEnd: "2025-08-05",
-                        qaStart: "2025-08-06",
-                        qaEnd: "2025-08-12",
-                        deployScheduled: "2025-08-15",
-                        deployActual: "",
-                        assignee: "김개발",
-                        notes: "보안 강화 필요"
-                    },
-                    {
-                        id: 2,
-                        version: "v3.25",
-                        name: "모바일 앱 UI 리뉴얼",
-                        priority: "medium",
-                        status: "development",
-                        serverDevStart: "2025-08-01",
-                        serverDevEnd: "2025-08-10",
-                        mobileDevStart: "2025-08-05",
-                        mobileDevEnd: "2025-08-20",
-                        qaStart: "2025-08-21",
-                        qaEnd: "2025-08-27",
-                        deployScheduled: "2025-08-30",
-                        deployActual: "",
-                        assignee: "이디자인",
-                        notes: "디자인 시스템 적용"
-                    },
-                    {
-                        id: 3,
-                        version: "v3.26",
-                        name: "결제 시스템 통합",
-                        priority: "high",
-                        status: "planning",
-                        serverDevStart: "2025-08-15",
-                        serverDevEnd: "2025-09-05",
-                        mobileDevStart: "2025-08-20",
-                        mobileDevEnd: "2025-09-10",
-                        qaStart: "2025-09-11",
-                        qaEnd: "2025-09-17",
-                        deployScheduled: "2025-09-20",
-                        deployActual: "",
-                        assignee: "박백엔드",
-                        notes: "외부 API 연동"
-                    },
-                    {
-                        id: 4,
-                        version: "v3.27",
-                        name: "데이터 분석 대시보드",
-                        priority: "low",
-                        status: "development",
-                        serverDevStart: "2025-08-10",
-                        serverDevEnd: "2025-08-25",
-                        mobileDevStart: "",
-                        mobileDevEnd: "",
-                        qaStart: "2025-08-26",
-                        qaEnd: "2025-09-01",
-                        deployScheduled: "2025-09-05",
-                        deployActual: "",
-                        assignee: "최데이터",
-                        notes: "웹 전용 - 차트 라이브러리 업데이트"
-                    }
-                ];
-            }
-            
             renderTable();
-            initializeDatePickers();
-            
-            // 성공 메시지
-            console.log('테이블 렌더링 완료!');
         });
 
-        // Excel 내보내기를 위한 SheetJS 라이브러리 로드
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
         document.head.appendChild(script);
