@@ -264,6 +264,10 @@
             color: #e53e3e;
         }
 
+        .sync-indicator.warning {
+            color: #eab308;
+        }
+
         .controls {
             display: flex;
             justify-content: space-between;
@@ -769,10 +773,7 @@
                     </select>
                 </div>
                 
-                <button onclick="initializeSampleData()" 
-                        style="background: #f56565; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
-                    🔄 샘플 데이터 초기화
-                </button>
+
                 
                 <button onclick="forceSync()" id="forceSyncBtn"
                         style="background: #3182ce; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
@@ -846,7 +847,7 @@
                 </div>
                 <div class="legend-item">
                     <span>🔄</span>
-                    <span>자동 폴링 동기화 (5초마다)</span>
+                    <span>자동 폴링 동기화 (60초마다)</span>
                 </div>
                 <div class="legend-item">
                     <span>👥</span>
@@ -1028,12 +1029,12 @@
         function startSyncInterval() {
             if (syncInterval) clearInterval(syncInterval);
             
-            // 5초마다 클라우드에서 변경사항 확인
+            // 15초마다 클라우드에서 변경사항 확인 (API 사용량 최적화)
             syncInterval = setInterval(() => {
                 if (isCloudMode && !isSyncing) {
                     loadFromCloud();
                 }
-            }, 5000);
+            }, 15000);
         }
 
         function stopSyncInterval() {
