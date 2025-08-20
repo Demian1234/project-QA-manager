@@ -272,6 +272,7 @@
         }
         
         .notification.error { background: #e53e3e; }
+        .notification.info { background: #3182ce; }
         
         @media (max-width: 768px) {
             .container { padding: 15px; }
@@ -397,9 +398,8 @@
                 console.error('연결 실패:', error);
             }
             
-            // 연결 실패해도 클라우드 모드 유지하고 재시도
+            // 연결 실패 시 재시도 (자동 초기화 제거)
             updateStatus('error', '🔄 클라우드 연결 재시도 중...');
-            await initializeCloud();
             setTimeout(connectToCloud, 3000); // 3초 후 재시도
             return false;
         }
@@ -451,17 +451,26 @@
                     const data = await response.json();
                     const cloudData = data.record;
                     
-                    if (!cloudData || !cloudData.projects) {
-                        await initializeCloud();
-                        return;
-                    }
-
-                    if (cloudData.version && cloudData.version !== lastVersion) {
-                        projects = cloudData.projects || [];
-                        lastVersion = cloudData.version;
+                    // 데이터 존재 여부를 더 정확히 체크
+                    if (cloudData && cloudData.projects && Array.isArray(cloudData.projects)) {
+                        // 기존 데이터가 있으면 로드
+                        if (cloudData.version && cloudData.version !== lastVersion) {
+                            projects = cloudData.projects;
+                            lastVersion = cloudData.version;
+                            renderTable();
+                            updateSyncStatus('클라우드 동기화됨');
+                            updateStatus('connected', '☁️ 클라우드 연결됨');
+                        }
+                    } else {
+                        // 완전히 빈 상태일 때만 샘플 데이터 제안
+                        console.log('빈 클라우드 감지 - 사용자 확인 필요');
+                        updateStatus('connected', '☁️ 클라우드 연결됨 (데이터 없음)');
+                        updateSyncStatus('클라우드 연결됨 - 데이터 없음');
+                        
+                        // 자동 초기화하지 않고 빈 상태로 유지
+                        projects = [];
                         renderTable();
-                        updateSyncStatus('클라우드 동기화됨');
-                        updateStatus('connected', '☁️ 클라우드 연결됨');
+                        showNotification('클라우드가 비어있습니다. 새 프로젝트를 추가하세요.', 'info');
                     }
                 } else {
                     throw new Error('로드 실패');
@@ -474,11 +483,12 @@
             }
         }
 
-        async function initializeCloud() {
+        async function initializeWithSampleData() {
+            // 수동으로만 호출되는 샘플 데이터 초기화
             projects = getSampleData();
             await saveToCloud();
             renderTable();
-            showNotification('클라우드 초기화 완료');
+            showNotification('샘플 데이터로 초기화했습니다');
         }
 
         function startAutoSync() {
@@ -697,11 +707,8 @@
         }
 
         function resetData() {
-            if (confirm("모든 데이터를 초기화하시겠습니까?")) {
-                projects = getSampleData();
-                saveData();
-                renderTable();
-                showNotification('데이터 초기화 완료');
+            if (confirm("모든 데이터를 샘플 데이터로 초기화하시겠습니까?\n(기존 데이터는 모두 삭제됩니다)")) {
+                initializeWithSampleData();
             }
         }
 
