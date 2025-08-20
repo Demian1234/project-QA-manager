@@ -398,9 +398,8 @@
                 console.error('연결 실패:', error);
             }
             
-            // 연결 실패 시 재시도 (자동 초기화 제거)
             updateStatus('error', '🔄 클라우드 연결 재시도 중...');
-            setTimeout(connectToCloud, 3000); // 3초 후 재시도
+            setTimeout(connectToCloud, 3000);
             return false;
         }
 
@@ -434,13 +433,13 @@
             } catch (error) {
                 updateSyncStatus('저장 실패 - 재시도 중...');
                 updateStatus('error', '🔄 클라우드 재연결 중...');
-                // 3초 후 재시도
                 setTimeout(() => saveToCloud(), 3000);
             }
             
             isSyncing = false;
         }
 
+        // ✅ 수정된 loadFromCloud
         async function loadFromCloud() {
             try {
                 const response = await fetch(`${API_URL}/latest`, {
@@ -451,26 +450,23 @@
                     const data = await response.json();
                     const cloudData = data.record;
                     
-                    // 데이터 존재 여부를 더 정확히 체크
-                    if (cloudData && cloudData.projects && Array.isArray(cloudData.projects)) {
-                        // 기존 데이터가 있으면 로드
-                        if (cloudData.version && cloudData.version !== lastVersion) {
+                    if (cloudData && Array.isArray(cloudData.projects)) {
+                        // 현재 데이터가 비어있거나 버전이 다를 때만 덮어씀
+                        if (projects.length === 0 || (cloudData.version && cloudData.version !== lastVersion)) {
                             projects = cloudData.projects;
-                            lastVersion = cloudData.version;
+                            lastVersion = cloudData.version || Date.now().toString();
                             renderTable();
                             updateSyncStatus('클라우드 동기화됨');
                             updateStatus('connected', '☁️ 클라우드 연결됨');
                         }
                     } else {
-                        // 완전히 빈 상태일 때만 샘플 데이터 제안
-                        console.log('빈 클라우드 감지 - 사용자 확인 필요');
                         updateStatus('connected', '☁️ 클라우드 연결됨 (데이터 없음)');
                         updateSyncStatus('클라우드 연결됨 - 데이터 없음');
-                        
-                        // 자동 초기화하지 않고 빈 상태로 유지
-                        projects = [];
-                        renderTable();
-                        showNotification('클라우드가 비어있습니다. 새 프로젝트를 추가하세요.', 'info');
+                        if (projects.length === 0) {
+                            projects = [];
+                            renderTable();
+                            showNotification('클라우드가 비어있습니다. 새 프로젝트를 추가하세요.', 'info');
+                        }
                     }
                 } else {
                     throw new Error('로드 실패');
@@ -478,13 +474,11 @@
             } catch (error) {
                 updateSyncStatus('로드 실패 - 재시도 중...');
                 updateStatus('error', '🔄 클라우드 재연결 중...');
-                // 5초 후 재시도
                 setTimeout(() => loadFromCloud(), 5000);
             }
         }
 
         async function initializeWithSampleData() {
-            // 수동으로만 호출되는 샘플 데이터 초기화
             projects = getSampleData();
             await saveToCloud();
             renderTable();
@@ -495,12 +489,10 @@
             if (syncInterval) clearInterval(syncInterval);
             syncInterval = setInterval(() => {
                 if (!isSyncing) loadFromCloud();
-            }, 60000); // 1분마다
+            }, 60000);
         }
 
-        // === 데이터 관리 ===
         function saveData() {
-            // 항상 클라우드에만 저장
             saveToCloud();
         }
 
@@ -511,216 +503,12 @@
                     serverDevStart: "2025-07-15", serverDevEnd: "2025-08-01", mobileDevStart: "2025-07-20", mobileDevEnd: "2025-08-05",
                     qaStart: "2025-08-06", qaEnd: "2025-08-12", deployScheduled: "2025-08-15", deployActual: "",
                     assignee: "김개발", notes: "보안 강화", lastModified: new Date().toISOString(), modifiedBy: currentUser
-                },
-                {
-                    id: 2, version: "v3.25", name: "모바일 앱 UI 리뉴얼", priority: "medium", status: "development",
-                    serverDevStart: "2025-08-01", serverDevEnd: "2025-08-10", mobileDevStart: "2025-08-05", mobileDevEnd: "2025-08-20",
-                    qaStart: "2025-08-21", qaEnd: "2025-08-27", deployScheduled: "2025-08-30", deployActual: "",
-                    assignee: "이디자인", notes: "디자인 시스템 적용", lastModified: new Date().toISOString(), modifiedBy: currentUser
-                },
-                {
-                    id: 3, version: "v3.26", name: "결제 시스템 통합", priority: "high", status: "planning",
-                    serverDevStart: "2025-08-15", serverDevEnd: "2025-09-05", mobileDevStart: "2025-08-20", mobileDevEnd: "2025-09-10",
-                    qaStart: "2025-09-11", qaEnd: "2025-09-17", deployScheduled: "2025-09-20", deployActual: "",
-                    assignee: "박백엔드", notes: "외부 API 연동", lastModified: new Date().toISOString(), modifiedBy: currentUser
                 }
             ];
         }
 
-        // === 프로젝트 관리 ===
         function addProject() {
             const name = prompt("프로젝트명을 입력하세요:");
             if (!name || name.trim() === '') return;
             
-            nextId = Math.max(...projects.map(p => p.id), 0) + 1;
-            
-            const newProject = {
-                id: nextId,
-                version: getNextVersion(),
-                name: name.trim(),
-                priority: "medium",
-                status: "planning",
-                serverDevStart: "", serverDevEnd: "", mobileDevStart: "", mobileDevEnd: "",
-                qaStart: "", qaEnd: "", deployScheduled: "", deployActual: "",
-                assignee: "", notes: "",
-                lastModified: new Date().toISOString(),
-                modifiedBy: currentUser
-            };
-            
-            projects.push(newProject);
-            saveData();
-            renderTable();
-        }
-
-        function updateProject(id, field, value) {
-            const project = projects.find(p => p.id === id);
-            if (project) {
-                project[field] = value;
-                project.lastModified = new Date().toISOString();
-                project.modifiedBy = currentUser;
-                saveData();
-            }
-        }
-
-        function deleteProject(id) {
-            if (confirm("이 프로젝트를 삭제하시겠습니까?")) {
-                projects = projects.filter(p => p.id !== id);
-                saveData();
-                renderTable();
-            }
-        }
-
-        function getNextVersion() {
-            if (projects.length === 0) return "v3.24";
-            const lastVersion = projects[projects.length - 1].version;
-            const versionNum = parseFloat(lastVersion.slice(1));
-            return `v${(Math.round((versionNum + 0.01) * 100) / 100).toFixed(2)}`;
-        }
-
-        // === UI 렌더링 ===
-        function renderTable() {
-            const tbody = document.getElementById('tableBody');
-            const filteredProjects = getFilteredProjects();
-            
-            if (filteredProjects.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="16" style="text-align: center; padding: 40px; color: #a0aec0;">프로젝트가 없습니다.</td></tr>';
-                return;
-            }
-            
-            tbody.innerHTML = filteredProjects.map((project, index) => {
-                const hasConflict = checkScheduleConflict(project, filteredProjects);
-                return `
-                    <tr class="draggable-row ${hasConflict ? 'conflict' : ''}" data-id="${project.id}">
-                        <td><div class="drag-handle">⋮⋮</div></td>
-                        <td><input type="text" class="version-input" value="${project.version}" onchange="updateProject(${project.id}, 'version', this.value)"></td>
-                        <td><input type="text" class="project-name-input" value="${project.name}" onchange="updateProject(${project.id}, 'name', this.value)"></td>
-                        <td>
-                            <select class="priority-${project.priority}" onchange="updateProject(${project.id}, 'priority', this.value)">
-                                <option value="high" ${project.priority === 'high' ? 'selected' : ''}>높음</option>
-                                <option value="medium" ${project.priority === 'medium' ? 'selected' : ''}>보통</option>
-                                <option value="low" ${project.priority === 'low' ? 'selected' : ''}>낮음</option>
-                            </select>
-                        </td>
-                        <td>
-                            <select class="status status-${project.status}" onchange="updateProject(${project.id}, 'status', this.value)">
-                                <option value="planning" ${project.status === 'planning' ? 'selected' : ''}>기획</option>
-                                <option value="development" ${project.status === 'development' ? 'selected' : ''}>개발</option>
-                                <option value="qa" ${project.status === 'qa' ? 'selected' : ''}>QA</option>
-                                <option value="deployment" ${project.status === 'deployment' ? 'selected' : ''}>배포</option>
-                                <option value="completed" ${project.status === 'completed' ? 'selected' : ''}>완료</option>
-                            </select>
-                        </td>
-                        ${createDateInputs(project)}
-                        <td><input type="text" value="${project.assignee}" onchange="updateProject(${project.id}, 'assignee', this.value)" style="width: 80px;"></td>
-                        <td><input type="text" value="${project.notes}" onchange="updateProject(${project.id}, 'notes', this.value)" style="width: 100px;"></td>
-                        <td><button class="btn btn-red" onclick="deleteProject(${project.id})" style="padding: 4px 8px;">삭제</button></td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function createDateInputs(project) {
-            const fields = ['serverDevStart', 'serverDevEnd', 'mobileDevStart', 'mobileDevEnd', 'qaStart', 'qaEnd', 'deployScheduled', 'deployActual'];
-            return fields.map(field => 
-                `<td><input type="date" class="date-input" value="${project[field]}" onchange="updateProject(${project.id}, '${field}', this.value)"></td>`
-            ).join('');
-        }
-
-        function getFilteredProjects() {
-            const statusFilter = document.getElementById('statusFilter').value;
-            const priorityFilter = document.getElementById('priorityFilter').value;
-            
-            return projects.filter(project => {
-                return (!statusFilter || project.status === statusFilter) &&
-                       (!priorityFilter || project.priority === priorityFilter);
-            });
-        }
-
-        function filterProjects() {
-            renderTable();
-        }
-
-        function checkScheduleConflict(currentProject, allProjects) {
-            return allProjects.some(other => {
-                if (other.id === currentProject.id) return false;
-                
-                // QA 겹침 체크
-                if (currentProject.qaStart && currentProject.qaEnd && other.qaStart && other.qaEnd) {
-                    const currentStart = new Date(currentProject.qaStart);
-                    const currentEnd = new Date(currentProject.qaEnd);
-                    const otherStart = new Date(other.qaStart);
-                    const otherEnd = new Date(other.qaEnd);
-                    
-                    if (currentStart <= otherEnd && currentEnd >= otherStart) return true;
-                }
-                
-                // 배포 날짜 겹침 체크
-                if (currentProject.deployScheduled && other.deployScheduled) {
-                    return new Date(currentProject.deployScheduled).toDateString() === new Date(other.deployScheduled).toDateString();
-                }
-                
-                return false;
-            });
-        }
-
-        // === 유틸리티 함수 ===
-        function updateStatus(status, text) {
-            const statusBar = document.getElementById('statusBar');
-            const statusDot = document.getElementById('statusDot');
-            const statusText = document.getElementById('statusText');
-            
-            statusBar.className = `status-bar ${status}`;
-            statusDot.className = `status-dot ${status}`;
-            statusText.textContent = text;
-        }
-
-        function updateSyncStatus(text) {
-            document.getElementById('syncStatus').textContent = text;
-        }
-
-        function updateUserName() {
-            const input = document.getElementById('userNameInput');
-            const newName = input.value.trim();
-            if (newName && newName !== currentUser) {
-                currentUser = newName;
-                localStorage.setItem('user', currentUser);
-                saveToCloud(); // 항상 클라우드에 저장
-            }
-        }
-
-        function showNotification(message, type = 'success') {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                if (document.body.contains(notification)) {
-                    document.body.removeChild(notification);
-                }
-            }, 3000);
-        }
-
-        async function forceSync() {
-            await loadFromCloud();
-            showNotification('클라우드 동기화 완료');
-        }
-
-        function resetData() {
-            if (confirm("모든 데이터를 샘플 데이터로 초기화하시겠습니까?\n(기존 데이터는 모두 삭제됩니다)")) {
-                initializeWithSampleData();
-            }
-        }
-
-        // === 초기화 ===
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('userNameInput').value = currentUser;
-            setTimeout(connectToCloud, 100);
-        });
-
-        window.addEventListener('beforeunload', () => {
-            if (syncInterval) clearInterval(syncInterval);
-        });
-    </script>
-</body>
-</html>
+            nextId = Math.max(...projects.map(p => p.id),
